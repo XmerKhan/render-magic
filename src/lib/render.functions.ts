@@ -76,8 +76,8 @@ export const createRenderJob = createServerFn({ method: "POST" })
     }
 
     const payload: RenderJobPayload = {
-      timeline: data.timeline as RenderJobPayload["timeline"],
-      settings: data.settings as RenderJobPayload["settings"],
+      timeline: data.timeline as unknown as RenderJobPayload["timeline"],
+      settings: data.settings as unknown as RenderJobPayload["settings"],
       assetPaths,
       width: data.width,
       height: data.height,
@@ -90,7 +90,7 @@ export const createRenderJob = createServerFn({ method: "POST" })
       .from("render_jobs")
       .insert({
         id: jobId,
-        payload: payload as unknown as Record<string, unknown>,
+        payload: JSON.parse(JSON.stringify(payload)),
         total_frames: data.durationInFrames,
         status: "queued",
         message: "Uploading media",
