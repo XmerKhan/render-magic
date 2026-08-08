@@ -86,14 +86,17 @@ export function getTransition(
     case 'flash-white':
       return { presentation: flashWhite(), timing };
     case 'push':
+      return { presentation: pushCut({}), timing };
+    // pushCut has no direction option, so directional pushes use slide, which
+    // moves both scenes together — the actual "push" look.
     case 'push-left':
-      return { presentation: pushCut({ direction: 'from-left' }), timing };
+      return { presentation: slide({ direction: 'from-left' }), timing };
     case 'push-right':
-      return { presentation: pushCut({ direction: 'from-right' }), timing };
+      return { presentation: slide({ direction: 'from-right' }), timing };
     case 'push-up':
-      return { presentation: pushCut({ direction: 'from-top' }), timing };
+      return { presentation: slide({ direction: 'from-top' }), timing };
     case 'push-down':
-      return { presentation: pushCut({ direction: 'from-bottom' }), timing };
+      return { presentation: slide({ direction: 'from-bottom' }), timing };
     case 'blur-dissolve':
       return { presentation: linearBlur({}), timing };
     case 'star-wipe':
