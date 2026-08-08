@@ -9,7 +9,7 @@ interface PreviewPlayerProps {
   timeline: TimelineData | null;
   settings: EditSettings;
   onFrameUpdate?: (frame: number) => void;
-  playerRef?: React.RefObject<PlayerRef>;
+  playerRef?: React.RefObject<PlayerRef | null>;
 }
 
 function frameToTimecode(frame: number, fps: number): string {
