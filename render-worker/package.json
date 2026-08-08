@@ -1,0 +1,22 @@
+{
+  "name": "autocut-render-worker",
+  "private": true,
+  "type": "module",
+  "description": "Headless Remotion renderer executed on a GitHub Actions runner.",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.506",
+    "@remotion/media": "4.0.506",
+    "@remotion/media-utils": "4.0.506",
+    "@remotion/renderer": "4.0.506",
+    "@remotion/transitions": "4.0.506",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.506"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}
