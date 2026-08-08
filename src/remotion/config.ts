@@ -21,6 +21,18 @@ export interface CompositionProps {
   settings: EditSettings;
 }
 
+/** Long-edge pixel target for each export resolution. */
+const RESOLUTION_LONG_EDGE: Record<string, number> = {
+  '720p': 1280,
+  '1080p': 1920,
+  '4k': 3840,
+};
+
+/** h264 requires even dimensions. */
+function even(n: number) {
+  return Math.max(2, Math.round(n / 2) * 2);
+}
+
 export function getCompositionConfig(
   timeline: TimelineData,
   settings: EditSettings,
@@ -29,13 +41,18 @@ export function getCompositionConfig(
   const fps = timeline.fps;
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
-  const durationInFrames =
-    timeline.totalFrames + introFrames + outroFrames;
+  const durationInFrames = timeline.totalFrames + introFrames + outroFrames;
+
+  // The aspect-ratio table is authored at a 1920 long edge; scale it so the
+  // exportResolution setting actually changes the output size.
+  const longEdge = RESOLUTION_LONG_EDGE[settings.exportResolution] ?? 1920;
+  const scale = longEdge / Math.max(ar.width, ar.height);
 
   return {
-    width: ar.width,
-    height: ar.height,
+    width: even(ar.width * scale),
+    height: even(ar.height * scale),
     fps,
     durationInFrames: Math.max(1, durationInFrames),
   };
 }
+
