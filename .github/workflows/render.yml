@@ -1,6 +1,12 @@
 name: Render video
 
 # The render farm. Dispatched by the app; each run renders exactly one job.
+#
+# A free-tier runner only has 2 vCPUs, which is too slow to render a long
+# timeline serially within the job timeout. So the app splits the timeline
+# into `chunk_count` frame ranges up front: the `render` job below runs once
+# per chunk in parallel (a matrix job), and `stitch` concatenates every
+# chunk's output once they've all finished.
 on:
   workflow_dispatch:
     inputs:
@@ -13,11 +19,32 @@ on:
       app_url:
         description: Base URL of the AutoCut Studio app
         required: true
+      chunk_count:
+        description: Number of parallel render chunks
+        required: true
 
 jobs:
-  render:
+  # Turns chunk_count into [0, 1, ..., chunk_count-1] for the render job's matrix.
+  prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    outputs:
+      chunks: ${{ steps.set.outputs.chunks }}
+    steps:
+      - id: set
+        run: |
+          CHUNKS=$(node -e "console.log(JSON.stringify(Array.from({length: ${{ inputs.chunk_count }}}, (_, i) => i)))")
+          echo "chunks=$CHUNKS" >> "$GITHUB_OUTPUT"
+
+  render:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      # One chunk failing shouldn't cancel the others mid-render - the app
+      # already sees the job as failed as soon as any chunk reports it.
+      fail-fast: false
+      matrix:
+        chunk_index: ${{ fromJson(needs.prepare.outputs.chunks) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +61,12 @@ jobs:
             libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
             libgbm1 libpango-1.0-0 libcairo2 libasound2t64 ffmpeg
 
+      - name: Cache worker node_modules
+        uses: actions/cache@v4
+        with:
+          path: render-worker/node_modules
+          key: worker-node-modules-${{ hashFiles('render-worker/package-lock.json', 'render-worker/package.json') }}
+
       - name: Install worker dependencies
         working-directory: render-worker
         run: npm install --no-audit --no-fund
@@ -43,13 +76,57 @@ jobs:
       # module resolution needs a node_modules at the repo root too -
       # otherwise imports like lucide-react used by composition components
       # can't be found.
+      - name: Cache app node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: app-node-modules-${{ hashFiles('package-lock.json', 'package.json') }}
+
       - name: Install app dependencies (for composition module resolution)
         run: npm install --no-audit --no-fund
 
-      - name: Render
+      # Remotion downloads a ~92MB Chrome Headless Shell binary the first
+      # time it renders. It caches it under render-worker/node_modules/.remotion
+      # (next to the nearest package.json), so caching that folder keyed on
+      # the pinned remotion version skips a ~1 minute download on every run.
+      - name: Cache Chrome Headless Shell
+        uses: actions/cache@v4
+        with:
+          path: render-worker/node_modules/.remotion
+          key: chrome-headless-shell-${{ hashFiles('render-worker/package.json') }}
+
+      - name: Render chunk
         working-directory: render-worker
         env:
           JOB_ID: ${{ inputs.job_id }}
           JOB_TOKEN: ${{ inputs.job_token }}
           APP_URL: ${{ inputs.app_url }}
+          CHUNK_INDEX: ${{ matrix.chunk_index }}
+          CHUNK_COUNT: ${{ inputs.chunk_count }}
         run: node render.mjs
+
+  # Runs only once every chunk in the matrix above has succeeded.
+  stitch:
+    needs: render
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Stitch chunks
+        working-directory: render-worker
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          JOB_TOKEN: ${{ inputs.job_token }}
+          APP_URL: ${{ inputs.app_url }}
+          CHUNK_COUNT: ${{ inputs.chunk_count }}
+        run: node stitch.mjs
