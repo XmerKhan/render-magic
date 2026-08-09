@@ -166,7 +166,10 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
           "X-GitHub-Api-Version": "2022-11-28",
+          // GitHub rejects API requests without a User-Agent with a 403.
+          "User-Agent": "AutoCut-Render-Dispatcher",
         },
+
         body: JSON.stringify({
           ref,
           inputs: {
