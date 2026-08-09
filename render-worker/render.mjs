@@ -11,6 +11,7 @@
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -101,6 +102,14 @@ async function main() {
     `Rendering ${composition.width}x${composition.height} @ ${composition.fps}fps, ${composition.durationInFrames} frames`,
   );
 
+  // GitHub-hosted runners on the free tier actually have 2 vCPUs, not 4 —
+  // Remotion refuses any concurrency above the real core count, so this must
+  // be read at runtime rather than assumed. Leave one core free for the
+  // ffmpeg encoder/stitcher when there's more than one to spare.
+  const cpuCount = os.cpus().length || 1;
+  const concurrency = Math.max(1, cpuCount - 1);
+  console.log(`Detected ${cpuCount} CPU core(s); using concurrency ${concurrency}`);
+
   let lastReported = 0;
   await renderMedia({
     composition,
@@ -108,8 +117,7 @@ async function main() {
     codec: "h264",
     inputProps,
     outputLocation: OUTPUT_FILE,
-    // Runner has 4 vCPUs; leave one for the encoder.
-    concurrency: 3,
+    concurrency,
     crf: 18,
     chromiumOptions: { gl: "swangle" },
     onProgress: ({ renderedFrames, progress, stitchStage }) => {
