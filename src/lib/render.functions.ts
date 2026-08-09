@@ -184,18 +184,24 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
     if (!res.ok) {
       const body = await res.text();
       console.error(`[dispatchRenderJob] github dispatch failed [${res.status}]: ${body}`);
+      const hint =
+        res.status === 404
+          ? ` The repo "${repo}", the branch "${ref}", or the workflow "${workflow}" could not be found with the configured token. Make sure this project's code (including .github/workflows/${workflow}) is pushed to that repo on branch "${ref}", and that the token has Actions: Read and write on it.`
+          : res.status === 403
+            ? " GitHub refused the request — check that the token is valid and has Actions: Read and write on the repo."
+            : "";
+      const detail = `Could not start the render worker (GitHub returned ${res.status}).${hint}`;
       await supabaseAdmin
         .from("render_jobs")
         .update({
           status: "failed",
-          error: `Could not start the render worker (GitHub returned ${res.status}).`,
+          error: detail,
           message: "Failed to start",
         })
         .eq("id", data.jobId);
-      throw new Error(
-        `Could not start the render worker (GitHub returned ${res.status}). ${body.slice(0, 300)}`,
-      );
+      throw new Error(`${detail} ${body.slice(0, 300)}`);
     }
+
 
     await supabaseAdmin
       .from("render_jobs")
