@@ -69,7 +69,7 @@ jobs:
 
       - name: Install worker dependencies
         working-directory: render-worker
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund || (sleep 10 && npm install --no-audit --no-fund) || (sleep 20 && npm install --no-audit --no-fund)
 
       # The composition entry point lives in the main app's src/remotion
       # folder (so preview and export stay pixel-identical), so webpack's
@@ -83,7 +83,7 @@ jobs:
           key: app-node-modules-${{ hashFiles('package-lock.json', 'package.json') }}
 
       - name: Install app dependencies (for composition module resolution)
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund || (sleep 10 && npm install --no-audit --no-fund) || (sleep 20 && npm install --no-audit --no-fund)
 
       # Remotion downloads a ~92MB Chrome Headless Shell binary the first
       # time it renders. It caches it under render-worker/node_modules/.remotion
