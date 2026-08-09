@@ -25,7 +25,7 @@ const createSchema = z.object({
   height: z.number().int().min(16).max(4096),
   fps: z.number().int().min(1).max(120),
   durationInFrames: z.number().int().min(1).max(60 * 60 * 30),
-  uploads: z.array(uploadRequestSchema).max(64),
+  uploads: z.array(uploadRequestSchema).max(10000),
 });
 
 const jobRefSchema = z.object({
