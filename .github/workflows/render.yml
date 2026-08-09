@@ -38,6 +38,14 @@ jobs:
         working-directory: render-worker
         run: npm install --no-audit --no-fund
 
+      # The composition entry point lives in the main app's src/remotion
+      # folder (so preview and export stay pixel-identical), so webpack's
+      # module resolution needs a node_modules at the repo root too -
+      # otherwise imports like lucide-react used by composition components
+      # can't be found.
+      - name: Install app dependencies (for composition module resolution)
+        run: npm install --no-audit --no-fund
+
       - name: Render
         working-directory: render-worker
         env:
