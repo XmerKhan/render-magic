@@ -120,6 +120,27 @@ function prepareTimeline(
   };
 }
 
+/**
+ * The timeline holds live `File` handles (and possibly blob URLs / DOM objects).
+ * Those cannot cross the server-function boundary — the RPC serializer throws a
+ * cryptic "Seroval Error (step: N)". Reduce the payload to plain JSON first.
+ */
+function toJsonSafe<T>(value: T, label: string): Record<string, unknown> {
+  try {
+    return JSON.parse(
+      JSON.stringify(value, (key, val) => {
+        if (key === "file") return undefined;
+        if (typeof File !== "undefined" && val instanceof File) return undefined;
+        if (typeof Blob !== "undefined" && val instanceof Blob) return undefined;
+        if (typeof val === "function") return undefined;
+        return val;
+      }),
+    ) as Record<string, unknown>;
+  } catch (e) {
+    throw new Error(`Could not prepare the ${label} for rendering: ${(e as Error).message}`);
+  }
+}
+
 export async function exportVideo(opts: ExportOptions): Promise<string> {
   const { assets, voiceoverFile, musicFile, onProgress, signal } = opts;
 
@@ -130,17 +151,23 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
   const settings: EditSettings = { ...opts.settings, musicUrl: prepared.timeline.musicUrl };
   const config = getCompositionConfig(prepared.timeline, settings);
 
-  const job = await createRenderJob({
-    data: {
-      timeline: prepared.timeline as unknown as Record<string, unknown>,
-      settings: settings as unknown as Record<string, unknown>,
-      width: config.width,
-      height: config.height,
-      fps: config.fps,
-      durationInFrames: config.durationInFrames,
-      uploads: prepared.uploads,
-    },
-  });
+  let job: Awaited<ReturnType<typeof createRenderJob>>;
+  try {
+    job = await createRenderJob({
+      data: {
+        timeline: toJsonSafe(prepared.timeline, "timeline"),
+        settings: toJsonSafe(settings, "settings"),
+        width: config.width,
+        height: config.height,
+        fps: config.fps,
+        durationInFrames: config.durationInFrames,
+        uploads: prepared.uploads.map((u) => ({ ...u })),
+      },
+    });
+  } catch (e) {
+    throw new Error(`Could not create the render job: ${(e as Error).message}`);
+  }
+
 
   // --- Upload media -------------------------------------------------------
   const total = job.uploads.length;
