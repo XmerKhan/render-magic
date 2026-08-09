@@ -17,6 +17,8 @@ export type Database = {
       render_jobs: {
         Row: {
           access_token: string
+          chunk_count: number
+          chunk_progress: Json
           created_at: string
           error: string | null
           id: string
@@ -31,6 +33,8 @@ export type Database = {
         }
         Insert: {
           access_token?: string
+          chunk_count?: number
+          chunk_progress?: Json
           created_at?: string
           error?: string | null
           id?: string
@@ -45,6 +49,8 @@ export type Database = {
         }
         Update: {
           access_token?: string
+          chunk_count?: number
+          chunk_progress?: Json
           created_at?: string
           error?: string | null
           id?: string
