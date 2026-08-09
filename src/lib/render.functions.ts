@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { RenderJobPayload, RenderJobState, RenderUploadTarget } from "./renderTypes";
+import { computeChunkCount } from "./renderTypes";
 
 const ASSETS_BUCKET = "render-assets";
 const OUTPUT_BUCKET = "renders";
@@ -13,7 +14,11 @@ const uploadRequestSchema = z.object({
   key: z.string().min(1).max(120),
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1).max(120),
-  sizeBytes: z.number().int().nonnegative().max(500 * 1024 * 1024),
+  sizeBytes: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(500 * 1024 * 1024),
 });
 
 const createSchema = z.object({
@@ -24,8 +29,12 @@ const createSchema = z.object({
   width: z.number().int().min(16).max(4096),
   height: z.number().int().min(16).max(4096),
   fps: z.number().int().min(1).max(120),
-  durationInFrames: z.number().int().min(1).max(60 * 60 * 30),
-  uploads: z.array(uploadRequestSchema).max(10000),
+  durationInFrames: z
+    .number()
+    .int()
+    .min(1)
+    .max(60 * 60 * 30),
+  uploads: z.array(uploadRequestSchema).max(500),
 });
 
 const jobRefSchema = z.object({
@@ -114,8 +123,11 @@ export const createRenderJob = createServerFn({ method: "POST" })
 /**
  * Triggers the GitHub Actions render workflow for an already-uploaded job.
  *
- * The workflow runner is the render farm: it gets ~7GB of RAM and 4 vCPUs on the
- * free tier, which is what Remotion's headless Chromium actually needs.
+ * The workflow runner is the render farm: a free-tier runner gets 2 vCPUs and
+ * ~7GB RAM, which is enough for Remotion but too slow to render a long video
+ * serially in one job. So the timeline is split into `chunkCount` frame
+ * ranges and rendered as parallel matrix jobs, then stitched together — see
+ * computeChunkCount() and .github/workflows/render.yml.
  */
 export const dispatchRenderJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => jobRefSchema.parse(input))
@@ -124,7 +136,7 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
 
     const { data: job, error } = await supabaseAdmin
       .from("render_jobs")
-      .select("id, access_token, status")
+      .select("id, access_token, status, payload, total_frames")
       .eq("id", data.jobId)
       .maybeSingle();
 
@@ -139,6 +151,9 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
       // Idempotent: a retried dispatch must not start a second render.
       return { dispatched: false, status: job.status };
     }
+
+    const payload = job.payload as unknown as RenderJobPayload;
+    const chunkCount = computeChunkCount(job.total_frames, payload.fps);
 
     const token = process.env["GITHUB_RENDER_TOKEN"];
     const repo = process.env["GITHUB_RENDER_REPO"];
@@ -176,6 +191,7 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
             job_id: data.jobId,
             job_token: data.token,
             app_url: appUrl.replace(/\/+$/, ""),
+            chunk_count: String(chunkCount),
           },
         }),
       },
@@ -201,7 +217,6 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
         .eq("id", data.jobId);
       throw new Error(`${detail} ${body.slice(0, 300)}`);
     }
-
 
     await supabaseAdmin
       .from("render_jobs")
