@@ -131,14 +131,15 @@ async function main() {
       `frames ${frameFrom}-${frameTo} of ${composition.durationInFrames - 1} total`,
   );
 
-  // GitHub-hosted runners on the free tier have only 2 vCPUs — Remotion
-  // refuses any concurrency above the real core count, so this must be read
-  // at runtime rather than assumed. With just 2 cores to begin with,
-  // reserving one for the encoder halves render throughput for little
-  // benefit (muxing is comparatively cheap), so use every core Remotion
-  // will allow.
+  // GitHub-hosted runners: 2 vCPU/~7GB on private free-tier repos, 4 vCPU/~16GB
+  // on public ones. This composition renders video plus a CSS color-grade
+  // filter, which is heavy enough that using every core crashed Chrome tabs
+  // mid-render ("Target closed" - Remotion's own docs point at memory/CPU
+  // overload for that error: https://remotion.dev/docs/target-closed).
+  // Using half the cores (min 1) leaves enough headroom regardless of runner
+  // size. Parallelism mainly comes from the chunk matrix anyway.
   const cpuCount = os.cpus().length || 1;
-  const concurrency = Math.max(1, cpuCount);
+  const concurrency = Math.max(1, Math.floor(cpuCount / 2));
   console.log(`Detected ${cpuCount} CPU core(s); using concurrency ${concurrency}`);
 
   let lastReported = 0;
