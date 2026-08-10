@@ -1,24 +1,62 @@
-import { useCurrentFrame, Img } from 'remotion';
-import { Video } from '@remotion/media';
-import type { TimelineScene, EditSettings, ColorGradePreset } from '@/types';
-import { KenBurnsImage } from './KenBurnsImage';
-import { Caption } from './Caption';
-import { MotionGraphics } from './MotionGraphics';
+import { useCurrentFrame, Img } from "remotion";
+import { Video } from "@remotion/media";
+import type { TimelineScene, EditSettings, ColorGradePreset } from "@/types";
+import { KenBurnsImage } from "./KenBurnsImage";
+import { Caption } from "./Caption";
+import { MotionGraphics } from "./MotionGraphics";
 
-const COLOR_GRADES: Record<ColorGradePreset, {
-  contrast: number;
-  saturation: number;
-  brightness: number;
-  sepia: number;
-  hueRotate: number;
-  vignette: number;
-}> = {
+const COLOR_GRADES: Record
+  ColorGradePreset,
+  {
+    contrast: number;
+    saturation: number;
+    brightness: number;
+    sepia: number;
+    hueRotate: number;
+    vignette: number;
+  }
+> = {
   none: { contrast: 1, saturation: 1, brightness: 1, sepia: 0, hueRotate: 0, vignette: 0 },
-  cinematic: { contrast: 1.15, saturation: 1.1, brightness: 0.95, sepia: 0, hueRotate: 0, vignette: 0.4 },
-  warm: { contrast: 1.05, saturation: 1.2, brightness: 1.03, sepia: 0.15, hueRotate: 0, vignette: 0.2 },
-  cool: { contrast: 1.1, saturation: 0.95, brightness: 0.98, sepia: 0, hueRotate: 200, vignette: 0.25 },
-  vintage: { contrast: 1.1, saturation: 0.8, brightness: 1.05, sepia: 0.3, hueRotate: 0, vignette: 0.35 },
-  vivid: { contrast: 1.2, saturation: 1.35, brightness: 1.02, sepia: 0, hueRotate: 0, vignette: 0.15 },
+  cinematic: {
+    contrast: 1.15,
+    saturation: 1.1,
+    brightness: 0.95,
+    sepia: 0,
+    hueRotate: 0,
+    vignette: 0.4,
+  },
+  warm: {
+    contrast: 1.05,
+    saturation: 1.2,
+    brightness: 1.03,
+    sepia: 0.15,
+    hueRotate: 0,
+    vignette: 0.2,
+  },
+  cool: {
+    contrast: 1.1,
+    saturation: 0.95,
+    brightness: 0.98,
+    sepia: 0,
+    hueRotate: 200,
+    vignette: 0.25,
+  },
+  vintage: {
+    contrast: 1.1,
+    saturation: 0.8,
+    brightness: 1.05,
+    sepia: 0.3,
+    hueRotate: 0,
+    vignette: 0.35,
+  },
+  vivid: {
+    contrast: 1.2,
+    saturation: 1.35,
+    brightness: 1.02,
+    sepia: 0,
+    hueRotate: 0,
+    vignette: 0.15,
+  },
 };
 
 const Vignette: React.FC<{ intensity: number }> = ({ intensity }) => {
@@ -26,10 +64,10 @@ const Vignette: React.FC<{ intensity: number }> = ({ intensity }) => {
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
         background: `radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,${intensity}) 75%)`,
-        pointerEvents: 'none',
+        pointerEvents: "none",
       }}
     />
   );
@@ -43,12 +81,12 @@ const FilmGrain: React.FC<{ amount: number }> = ({ amount }) => {
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
         opacity: amount * 0.25,
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='${0.5 + noise * 0.5}' /%3E%3C/svg%3E")`,
-        pointerEvents: 'none',
-        mixBlendMode: 'overlay',
+        pointerEvents: "none",
+        mixBlendMode: "overlay",
       }}
     />
   );
@@ -67,28 +105,41 @@ export const SceneComponent: React.FC<{
   const vignette = Math.min(1, preset.vignette + manual.vignette);
 
   const filterStr = `contrast(${contrast}) saturate(${saturation}) brightness(${brightness}) sepia(${preset.sepia}) hue-rotate(${preset.hueRotate}deg)`;
+  // Chromium has to composite a CSS `filter` in software when there's no GPU
+  // (true on every GitHub Actions runner), which is expensive at 1080p -
+  // especially over video. Skip the filter wrapper entirely when it would be
+  // a no-op (colorGrade "none" and no manual adjustments), which is the
+  // common case, instead of paying that cost on every single frame.
+  const hasColorGrade =
+    contrast !== 1 ||
+    saturation !== 1 ||
+    brightness !== 1 ||
+    preset.sepia !== 0 ||
+    preset.hueRotate !== 0;
+
+  const media =
+    scene.media.kind === "image" ? (
+      scene.kenBurns.enabled ? (
+        <KenBurnsImage scene={scene} />
+      ) : (
+        <Img src={scene.media.url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      )
+    ) : (
+      <Video
+        src={scene.media.url}
+        style={{ width: "100%", height: "100%" }}
+        objectFit="cover"
+        muted
+      />
+    );
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', backgroundColor: '#000' }}>
-      <div style={{ position: 'absolute', inset: 0, filter: filterStr }}>
-        {scene.media.kind === 'image' ? (
-          scene.kenBurns.enabled ? (
-            <KenBurnsImage scene={scene} />
-          ) : (
-            <Img
-              src={scene.media.url}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          )
-        ) : (
-          <Video
-            src={scene.media.url}
-            style={{ width: '100%', height: '100%' }}
-            objectFit="cover"
-            muted
-          />
-        )}
-      </div>
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", backgroundColor: "#000" }}>
+      {hasColorGrade ? (
+        <div style={{ position: "absolute", inset: 0, filter: filterStr }}>{media}</div>
+      ) : (
+        <div style={{ position: "absolute", inset: 0 }}>{media}</div>
+      )}
       <Vignette intensity={vignette} />
       <FilmGrain amount={manual.filmGrain} />
       <Caption scene={scene} settings={settings} />
