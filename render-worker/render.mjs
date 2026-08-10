@@ -123,6 +123,7 @@ async function main() {
     serveUrl,
     id: "main",
     inputProps,
+    timeoutInMilliseconds: 220000,
   });
 
   const [frameFrom, frameTo] = job.frameRange;
@@ -153,6 +154,10 @@ async function main() {
     crf: 18,
     frameRange: [frameFrom, frameTo],
     chromiumOptions: { gl: "swangle" },
+    // Default is 30s. With many chunks fetching media from Supabase Storage
+    // in parallel, an individual image/audio load can occasionally take
+    // longer than that under contention - better to wait than to crash.
+    timeoutInMilliseconds: 220000,
     onProgress: ({ renderedFrames, progress, stitchStage }) => {
       const pct = Math.round(progress * 100);
       if (pct - lastReported < 2) return;
