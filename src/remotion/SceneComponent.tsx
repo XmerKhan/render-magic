@@ -1,20 +1,11 @@
 import { Img, OffthreadVideo, staticFile } from "remotion";
+import { memo } from "react";
 import type { TimelineScene, EditSettings, ColorGradePreset } from "@/types";
 import { KenBurnsImage } from "./KenBurnsImage";
 import { Caption } from "./Caption";
 import { MotionGraphics } from "./MotionGraphics";
 
-const COLOR_GRADES: Record<
-  ColorGradePreset,
-  {
-    contrast: number;
-    saturation: number;
-    brightness: number;
-    sepia: number;
-    hueRotate: number;
-    vignette: number;
-  }
-> = {
+const COLOR_GRADES: Record<ColorGradePreset, { contrast: number; saturation: number; brightness: number; sepia: number; hueRotate: number; vignette: number }> = {
   none: { contrast: 1, saturation: 1, brightness: 1, sepia: 0, hueRotate: 0, vignette: 0 },
   cinematic: { contrast: 1.15, saturation: 1.1, brightness: 0.95, sepia: 0, hueRotate: 0, vignette: 0.4 },
   warm: { contrast: 1.05, saturation: 1.2, brightness: 1.03, sepia: 0.15, hueRotate: 0, vignette: 0.2 },
@@ -23,95 +14,49 @@ const COLOR_GRADES: Record<
   vivid: { contrast: 1.2, saturation: 1.35, brightness: 1.02, sepia: 0, hueRotate: 0, vignette: 0.15 },
 };
 
-const Vignette: React.FC<{ intensity: number }> = ({ intensity }) => {
+const Vignette: React.FC<{ intensity: number }> = memo(({ intensity }) => {
   if (intensity <= 0) return null;
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: `radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,${intensity}) 75%)`,
-        pointerEvents: "none",
-      }}
-    />
+    <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,${intensity}) 75%)`, pointerEvents: "none" }} />
   );
-};
+});
 
-/**
- * Keep the grain texture stable across frames. The old implementation changed
- * the SVG data URL on every frame, forcing Chromium to parse/decode a new
- * fractal-noise image thousands of times during a render. A stable texture can
- * be cached by Chromium while the opacity remains constant.
- */
+// Stable texture: the old implementation generated a new SVG/data URL for
+// every frame. Keep one deterministic texture so Chromium can reuse it.
 const FILM_GRAIN_IMAGE =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' seed='17' /%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.75' /%3E%3C/svg%3E\")";
 
-const FilmGrain: React.FC<{ amount: number }> = ({ amount }) => {
+const FilmGrain: React.FC<{ amount: number }> = memo(({ amount }) => {
   if (amount <= 0) return null;
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        opacity: amount * 0.25,
-        backgroundImage: FILM_GRAIN_IMAGE,
-        pointerEvents: "none",
-        mixBlendMode: "overlay",
-      }}
-    />
+    <div style={{ position: "absolute", inset: 0, opacity: amount * 0.25, backgroundImage: FILM_GRAIN_IMAGE, pointerEvents: "none", mixBlendMode: "overlay" }} />
   );
-};
+});
 
-export const SceneComponent: React.FC<{
-  scene: TimelineScene;
-  settings: EditSettings;
-}> = ({ scene, settings }) => {
+export const SceneComponent: React.FC<{ scene: TimelineScene; settings: EditSettings }> = memo(({ scene, settings }) => {
   const preset = COLOR_GRADES[settings.colorGrade];
   const manual = settings.manualColorGrade;
-
   const contrast = preset.contrast * manual.contrast;
   const saturation = preset.saturation * manual.saturation;
   const brightness = preset.brightness * manual.brightness;
   const vignette = Math.min(1, preset.vignette + manual.vignette);
-
   const filterStr = `contrast(${contrast}) saturate(${saturation}) brightness(${brightness}) sepia(${preset.sepia}) hue-rotate(${preset.hueRotate}deg)`;
-  const mediaUrl = scene.media.url.startsWith("worker-asset:")
-    ? staticFile(scene.media.url.slice("worker-asset:".length))
-    : scene.media.url;
+  const mediaUrl = scene.media.url.startsWith("worker-asset:") ? staticFile(scene.media.url.slice("worker-asset:".length)) : scene.media.url;
+  const hasColorGrade = contrast !== 1 || saturation !== 1 || brightness !== 1 || preset.sepia !== 0 || preset.hueRotate !== 0;
 
-  const hasColorGrade =
-    contrast !== 1 ||
-    saturation !== 1 ||
-    brightness !== 1 ||
-    preset.sepia !== 0 ||
-    preset.hueRotate !== 0;
-
-  const media =
-    scene.media.kind === "image" ? (
-      scene.kenBurns.enabled ? (
-        <KenBurnsImage scene={scene} />
-      ) : (
-        <Img src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-      )
-    ) : (
-      <OffthreadVideo
-        src={mediaUrl}
-        style={{ width: "100%", height: "100%" }}
-        muted
-      />
-    );
+  const media = scene.media.kind === "image" ? (
+    scene.kenBurns.enabled ? <KenBurnsImage scene={scene} /> : <Img src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+  ) : (
+    <OffthreadVideo src={mediaUrl} style={{ width: "100%", height: "100%" }} muted />
+  );
 
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", backgroundColor: "#000" }}>
-      {hasColorGrade ? (
-        <div style={{ position: "absolute", inset: 0, filter: filterStr }}>{media}</div>
-      ) : (
-        <div style={{ position: "absolute", inset: 0 }}>{media}</div>
-      )}
+      {hasColorGrade ? <div style={{ position: "absolute", inset: 0, filter: filterStr }}>{media}</div> : <div style={{ position: "absolute", inset: 0 }}>{media}</div>}
       <Vignette intensity={vignette} />
       <FilmGrain amount={manual.filmGrain} />
       <Caption scene={scene} settings={settings} />
       <MotionGraphics scene={scene} settings={settings} />
     </div>
   );
-};
+});
