@@ -1,4 +1,4 @@
-import { useCurrentFrame, Img, OffthreadVideo, staticFile } from "remotion";
+import { Img, OffthreadVideo, staticFile } from "remotion";
 import type { TimelineScene, EditSettings, ColorGradePreset } from "@/types";
 import { KenBurnsImage } from "./KenBurnsImage";
 import { Caption } from "./Caption";
@@ -16,46 +16,11 @@ const COLOR_GRADES: Record<
   }
 > = {
   none: { contrast: 1, saturation: 1, brightness: 1, sepia: 0, hueRotate: 0, vignette: 0 },
-  cinematic: {
-    contrast: 1.15,
-    saturation: 1.1,
-    brightness: 0.95,
-    sepia: 0,
-    hueRotate: 0,
-    vignette: 0.4,
-  },
-  warm: {
-    contrast: 1.05,
-    saturation: 1.2,
-    brightness: 1.03,
-    sepia: 0.15,
-    hueRotate: 0,
-    vignette: 0.2,
-  },
-  cool: {
-    contrast: 1.1,
-    saturation: 0.95,
-    brightness: 0.98,
-    sepia: 0,
-    hueRotate: 200,
-    vignette: 0.25,
-  },
-  vintage: {
-    contrast: 1.1,
-    saturation: 0.8,
-    brightness: 1.05,
-    sepia: 0.3,
-    hueRotate: 0,
-    vignette: 0.35,
-  },
-  vivid: {
-    contrast: 1.2,
-    saturation: 1.35,
-    brightness: 1.02,
-    sepia: 0,
-    hueRotate: 0,
-    vignette: 0.15,
-  },
+  cinematic: { contrast: 1.15, saturation: 1.1, brightness: 0.95, sepia: 0, hueRotate: 0, vignette: 0.4 },
+  warm: { contrast: 1.05, saturation: 1.2, brightness: 1.03, sepia: 0.15, hueRotate: 0, vignette: 0.2 },
+  cool: { contrast: 1.1, saturation: 0.95, brightness: 0.98, sepia: 0, hueRotate: 200, vignette: 0.25 },
+  vintage: { contrast: 1.1, saturation: 0.8, brightness: 1.05, sepia: 0.3, hueRotate: 0, vignette: 0.35 },
+  vivid: { contrast: 1.2, saturation: 1.35, brightness: 1.02, sepia: 0, hueRotate: 0, vignette: 0.15 },
 };
 
 const Vignette: React.FC<{ intensity: number }> = ({ intensity }) => {
@@ -72,18 +37,24 @@ const Vignette: React.FC<{ intensity: number }> = ({ intensity }) => {
   );
 };
 
-const FilmGrain: React.FC<{ amount: number }> = ({ amount }) => {
-  const frame = useCurrentFrame();
-  if (amount <= 0) return null;
+/**
+ * Keep the grain texture stable across frames. The old implementation changed
+ * the SVG data URL on every frame, forcing Chromium to parse/decode a new
+ * fractal-noise image thousands of times during a render. A stable texture can
+ * be cached by Chromium while the opacity remains constant.
+ */
+const FILM_GRAIN_IMAGE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' seed='17' /%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.75' /%3E%3C/svg%3E\")";
 
-  const noise = ((frame * 37 + 13) % 100) / 100;
+const FilmGrain: React.FC<{ amount: number }> = ({ amount }) => {
+  if (amount <= 0) return null;
   return (
     <div
       style={{
         position: "absolute",
         inset: 0,
         opacity: amount * 0.25,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='${0.5 + noise * 0.5}' /%3E%3C/svg%3E")`,
+        backgroundImage: FILM_GRAIN_IMAGE,
         pointerEvents: "none",
         mixBlendMode: "overlay",
       }}
@@ -107,11 +78,7 @@ export const SceneComponent: React.FC<{
   const mediaUrl = scene.media.url.startsWith("worker-asset:")
     ? staticFile(scene.media.url.slice("worker-asset:".length))
     : scene.media.url;
-  // Chromium has to composite a CSS `filter` in software when there's no GPU
-  // (true on every GitHub Actions runner), which is expensive at 1080p -
-  // especially over video. Skip the filter wrapper entirely when it would be
-  // a no-op (colorGrade "none" and no manual adjustments), which is the
-  // common case, instead of paying that cost on every single frame.
+
   const hasColorGrade =
     contrast !== 1 ||
     saturation !== 1 ||
