@@ -99,16 +99,20 @@ async function verifyVideo(file, expectedDuration = null) {
 
 async function main() {
   console.log(`Stitching ${CHUNK_COUNT} chunk(s) for job ${JOB_ID}`);
-  const { chunkUrls, outputUploadUrl } = await callApp({
+  const { chunkUrls, outputUploadUrl, totalFrames, fps } = await callApp({
     action: "stitch-claim",
     chunkCount: CHUNK_COUNT,
   });
+  const expectedDuration = Number(totalFrames) / Number(fps);
+  if (!Number.isFinite(expectedDuration) || expectedDuration <= 0) {
+    throw new Error("The render service returned an invalid expected duration");
+  }
 
   if (chunkUrls.length === 1) {
     console.log("Single chunk — skipping ffmpeg concat, uploading it directly");
     const chunkPath = path.join(WORKDIR, "chunk-0.mp4");
     await downloadTo(chunkUrls[0], chunkPath);
-    await verifyVideo(chunkPath);
+    await verifyVideo(chunkPath, expectedDuration);
     await uploadFrom(outputUploadUrl, chunkPath);
     await callApp({ action: "complete" });
     console.log("Done");
@@ -146,7 +150,7 @@ async function main() {
 
   const stats = fs.statSync(outputFile);
   if (!stats.size) throw new Error("ffmpeg produced an empty file");
-  await verifyVideo(outputFile);
+  await verifyVideo(outputFile, expectedDuration);
   console.log(`Final video: ${(stats.size / 1024 / 1024).toFixed(1)}MB`);
 
   await uploadFrom(outputUploadUrl, outputFile);

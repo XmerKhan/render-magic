@@ -335,6 +335,8 @@ export const Route = createFileRoute("/api/public/render-worker")({
             chunkUrls,
             outputUploadUrl: outputUpload.signedUrl,
             uploadUrlTtlSeconds: OUTPUT_UPLOAD_TTL,
+            totalFrames: job.total_frames,
+            fps: payload.fps,
           });
         }
 
@@ -363,7 +365,7 @@ export const Route = createFileRoute("/api/public/render-worker")({
           await supabaseAdmin
             .from("render_jobs")
             .update({
-              status: "completed",
+              status: "done",
               progress: 100,
               message: "Render complete",
               output_path: payload.outputPath,
