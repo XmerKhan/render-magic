@@ -1,12 +1,8 @@
 name: Render video
 
 # The render farm. Dispatched by the app; each run renders exactly one job.
-#
-# A free-tier runner only has 2 vCPUs, which is too slow to render a long
-# timeline serially within the job timeout. So the app splits the timeline
-# into `chunk_count` frame ranges up front: the `render` job below runs once
-# per chunk in parallel (a matrix job), and `stitch` concatenates every
-# chunk's output once they've all finished.
+# Long timelines are split into independent chunks so completed work can be
+# resumed and stitched without restarting the entire render.
 on:
   workflow_dispatch:
     inputs:
@@ -24,7 +20,6 @@ on:
         required: true
 
 jobs:
-  # Turns chunk_count into [0, 1, ..., chunk_count-1] for the render job's matrix.
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -38,15 +33,12 @@ jobs:
   render:
     needs: prepare
     runs-on: ubuntu-latest
-    # Chunks target ~15 seconds of source video. This is a guardrail, not the
-    # mechanism that makes long renders succeed; each chunk is independently resumable.
-    timeout-minutes: 30
+    # A 15-second 1080p chunk can exceed 30 minutes on a CPU-only runner.
+    # This is a safety ceiling, not a performance mechanism. Chunks remain
+    # independently checkpointed and retried.
+    timeout-minutes: 90
     strategy:
-      # One chunk failing shouldn't cancel the others mid-render - the app
-      # already sees the job as failed as soon as any chunk reports it.
       fail-fast: false
-      # GitHub may provision many matrix jobs at once. Cap active chunks so
-      # storage and callback traffic remain stable while still rendering in parallel.
       max-parallel: 8
       matrix:
         chunk_index: ${{ fromJson(needs.prepare.outputs.chunks) }}
@@ -57,7 +49,6 @@ jobs:
         with:
           node-version: 22
 
-      # Remotion needs these to run headless Chromium on the runner.
       - name: Install Chromium dependencies
         run: |
           sudo apt-get update
@@ -76,11 +67,6 @@ jobs:
         working-directory: render-worker
         run: npm install --no-audit --no-fund || (sleep 10 && npm install --no-audit --no-fund) || (sleep 20 && npm install --no-audit --no-fund)
 
-      # The composition entry point lives in the main app's src/remotion
-      # folder (so preview and export stay pixel-identical), so webpack's
-      # module resolution needs a node_modules at the repo root too -
-      # otherwise imports like lucide-react used by composition components
-      # can't be found.
       - name: Cache app node_modules
         uses: actions/cache@v4
         with:
@@ -90,10 +76,6 @@ jobs:
       - name: Install app dependencies (for composition module resolution)
         run: npm install --no-audit --no-fund || (sleep 10 && npm install --no-audit --no-fund) || (sleep 20 && npm install --no-audit --no-fund)
 
-      # Remotion downloads a ~92MB Chrome Headless Shell binary the first
-      # time it renders. It caches it under render-worker/node_modules/.remotion
-      # (next to the nearest package.json), so caching that folder keyed on
-      # the pinned remotion version skips a ~1 minute download on every run.
       - name: Cache Chrome Headless Shell
         uses: actions/cache@v4
         with:
@@ -120,7 +102,6 @@ jobs:
           done
           exit 1
 
-  # Runs only once every chunk in the matrix above has succeeded.
   stitch:
     needs: render
     runs-on: ubuntu-latest
