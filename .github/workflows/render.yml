@@ -38,11 +38,16 @@ jobs:
   render:
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Chunks target ~15 seconds of source video. This is a guardrail, not the
+    # mechanism that makes long renders succeed; each chunk is independently resumable.
+    timeout-minutes: 30
     strategy:
       # One chunk failing shouldn't cancel the others mid-render - the app
       # already sees the job as failed as soon as any chunk reports it.
       fail-fast: false
+      # GitHub may provision many matrix jobs at once. Cap active chunks so
+      # storage and callback traffic remain stable while still rendering in parallel.
+      max-parallel: 8
       matrix:
         chunk_index: ${{ fromJson(needs.prepare.outputs.chunks) }}
     steps:
@@ -103,7 +108,17 @@ jobs:
           APP_URL: ${{ inputs.app_url }}
           CHUNK_INDEX: ${{ matrix.chunk_index }}
           CHUNK_COUNT: ${{ inputs.chunk_count }}
-        run: node render.mjs
+          MAX_CHUNK_ATTEMPTS: 3
+        run: |
+          for attempt in 1 2 3; do
+            echo "Chunk attempt $attempt/3"
+            node render.mjs && exit 0
+            if [ "$attempt" -lt 3 ]; then
+              echo "Chunk failed; retrying only this chunk in 15 seconds"
+              sleep 15
+            fi
+          done
+          exit 1
 
   # Runs only once every chunk in the matrix above has succeeded.
   stitch:

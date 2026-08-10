@@ -186,6 +186,11 @@ export interface PipelineProgress {
   stage: PipelineStage;
   message: string;
   progress: number;
+  currentChunk?: number | null;
+  completedChunks?: number;
+  totalChunks?: number;
+  elapsedSeconds?: number;
+  etaSeconds?: number | null;
 }
 
 export interface ValidationResult {

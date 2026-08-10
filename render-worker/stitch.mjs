@@ -64,28 +64,56 @@ async function callApp(body, { retries = 3 } = {}) {
 
 async function downloadTo(url, dest) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Download failed [${res.status}]: ${dest}`);
-  const buffer = Buffer.from(await res.arrayBuffer());
-  fs.writeFileSync(dest, buffer);
+  if (!res.ok || !res.body) throw new Error(`Download failed [${res.status}]: ${dest}`);
+  const file = fs.createWriteStream(dest);
+  await res.body.pipeTo(new WritableStream({
+    write(chunk) { return new Promise((resolve, reject) => file.write(Buffer.from(chunk), (error) => error ? reject(error) : resolve())); },
+    close() { return new Promise((resolve) => file.end(resolve)); },
+    abort(error) { file.destroy(error); },
+  }));
+}
+
+async function uploadFrom(url, source) {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "video/mp4", "Content-Length": String(fs.statSync(source).size) },
+    body: fs.createReadStream(source),
+    duplex: "half",
+  });
+  if (!response.ok) throw new Error(`Upload failed [${response.status}]: ${await response.text()}`);
+}
+
+async function verifyVideo(file, expectedDuration = null) {
+  const { stdout } = await run("ffprobe", [
+    "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,width,height,duration",
+    "-of", "json", file,
+  ]);
+  const stream = JSON.parse(stdout).streams?.[0];
+  if (!stream || stream.codec_name !== "h264" || !stream.width || !stream.height) {
+    throw new Error(`Video validation failed for ${path.basename(file)}`);
+  }
+  if (expectedDuration && Number(stream.duration) < expectedDuration * 0.98) {
+    throw new Error(`Final video is incomplete (${stream.duration}s, expected about ${expectedDuration}s)`);
+  }
 }
 
 async function main() {
   console.log(`Stitching ${CHUNK_COUNT} chunk(s) for job ${JOB_ID}`);
-  const { chunkUrls, outputUploadUrl } = await callApp({
+  const { chunkUrls, outputUploadUrl, totalFrames, fps } = await callApp({
     action: "stitch-claim",
     chunkCount: CHUNK_COUNT,
   });
+  const expectedDuration = Number(totalFrames) / Number(fps);
+  if (!Number.isFinite(expectedDuration) || expectedDuration <= 0) {
+    throw new Error("The render service returned an invalid expected duration");
+  }
 
   if (chunkUrls.length === 1) {
     console.log("Single chunk — skipping ffmpeg concat, uploading it directly");
     const chunkPath = path.join(WORKDIR, "chunk-0.mp4");
     await downloadTo(chunkUrls[0], chunkPath);
-    const upload = await fetch(outputUploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": "video/mp4" },
-      body: fs.readFileSync(chunkPath),
-    });
-    if (!upload.ok) throw new Error(`Upload failed [${upload.status}]: ${await upload.text()}`);
+    await verifyVideo(chunkPath, expectedDuration);
+    await uploadFrom(outputUploadUrl, chunkPath);
     await callApp({ action: "complete" });
     console.log("Done");
     return;
@@ -96,6 +124,7 @@ async function main() {
     const dest = path.join(WORKDIR, `chunk-${i}.mp4`);
     console.log(`Downloading chunk ${i + 1}/${chunkUrls.length}`);
     await downloadTo(chunkUrls[i], dest);
+    await verifyVideo(dest);
     chunkPaths.push(dest);
   }
 
@@ -107,27 +136,24 @@ async function main() {
 
   const outputFile = path.join(WORKDIR, "final.mp4");
   console.log("Concatenating chunks with ffmpeg");
-  await run("ffmpeg", [
+  const { stderr } = await run("ffmpeg", [
     "-y",
+    "-v", "warning",
     "-f", "concat",
     "-safe", "0",
     "-i", listFile,
     "-c", "copy",
+    "-movflags", "+faststart",
     outputFile,
   ]);
+  if (stderr) console.log(stderr);
 
   const stats = fs.statSync(outputFile);
   if (!stats.size) throw new Error("ffmpeg produced an empty file");
+  await verifyVideo(outputFile, expectedDuration);
   console.log(`Final video: ${(stats.size / 1024 / 1024).toFixed(1)}MB`);
 
-  const upload = await fetch(outputUploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": "video/mp4" },
-    body: fs.readFileSync(outputFile),
-  });
-  if (!upload.ok) {
-    throw new Error(`Upload failed [${upload.status}]: ${await upload.text()}`);
-  }
+  await uploadFrom(outputUploadUrl, outputFile);
 
   await callApp({ action: "complete" });
   console.log("Done");

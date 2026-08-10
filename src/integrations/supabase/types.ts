@@ -14,51 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      render_job_chunks: {
+        Row: {
+          attempt: number
+          chunk_index: number
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          frame_from: number
+          frame_to: number
+          job_id: string
+          last_heartbeat_at: string | null
+          output_path: string | null
+          progress: number
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt?: number
+          chunk_index: number
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          frame_from: number
+          frame_to: number
+          job_id: string
+          last_heartbeat_at?: string | null
+          output_path?: string | null
+          progress?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt?: number
+          chunk_index?: number
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          frame_from?: number
+          frame_to?: number
+          job_id?: string
+          last_heartbeat_at?: string | null
+          output_path?: string | null
+          progress?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "render_job_chunks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "render_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       render_jobs: {
         Row: {
           access_token: string
+          chunk_attempts: Json
           chunk_count: number
           chunk_progress: Json
+          completed_chunks: number
           created_at: string
+          current_chunk: number | null
+          elapsed_seconds: number
           error: string | null
+          eta_seconds: number | null
           id: string
+          last_heartbeat_at: string | null
           message: string
           output_path: string | null
           payload: Json
           progress: number
           rendered_frames: number
+          started_at: string | null
           status: string
           total_frames: number
           updated_at: string
         }
         Insert: {
           access_token?: string
+          chunk_attempts?: Json
           chunk_count?: number
           chunk_progress?: Json
+          completed_chunks?: number
           created_at?: string
+          current_chunk?: number | null
+          elapsed_seconds?: number
           error?: string | null
+          eta_seconds?: number | null
           id?: string
+          last_heartbeat_at?: string | null
           message?: string
           output_path?: string | null
           payload: Json
           progress?: number
           rendered_frames?: number
+          started_at?: string | null
           status?: string
           total_frames?: number
           updated_at?: string
         }
         Update: {
           access_token?: string
+          chunk_attempts?: Json
           chunk_count?: number
           chunk_progress?: Json
+          completed_chunks?: number
           created_at?: string
+          current_chunk?: number | null
+          elapsed_seconds?: number
           error?: string | null
+          eta_seconds?: number | null
           id?: string
+          last_heartbeat_at?: string | null
           message?: string
           output_path?: string | null
           payload?: Json
           progress?: number
           rendered_frames?: number
+          started_at?: string | null
           status?: string
           total_frames?: number
           updated_at?: string

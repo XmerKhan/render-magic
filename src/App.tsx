@@ -221,12 +221,13 @@ export default function App() {
         voiceoverFile,
         musicFile,
         signal: controller.signal,
-        onProgress: (pct, msg) => {
+        onProgress: (pct, msg, details) => {
           // pct < 0 means "no new progress, message only" (e.g. reconnecting).
           setProgress((prev) => ({
             stage: 'rendering',
             message: msg,
             progress: pct < 0 ? prev.progress : pct,
+            ...details,
           }));
         },
       });

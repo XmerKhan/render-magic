@@ -1,5 +1,4 @@
-import { useCurrentFrame, Img } from "remotion";
-import { Video } from "@remotion/media";
+import { useCurrentFrame, Img, OffthreadVideo, staticFile } from "remotion";
 import type { TimelineScene, EditSettings, ColorGradePreset } from "@/types";
 import { KenBurnsImage } from "./KenBurnsImage";
 import { Caption } from "./Caption";
@@ -105,6 +104,9 @@ export const SceneComponent: React.FC<{
   const vignette = Math.min(1, preset.vignette + manual.vignette);
 
   const filterStr = `contrast(${contrast}) saturate(${saturation}) brightness(${brightness}) sepia(${preset.sepia}) hue-rotate(${preset.hueRotate}deg)`;
+  const mediaUrl = scene.media.url.startsWith("worker-asset:")
+    ? staticFile(scene.media.url.slice("worker-asset:".length))
+    : scene.media.url;
   // Chromium has to composite a CSS `filter` in software when there's no GPU
   // (true on every GitHub Actions runner), which is expensive at 1080p -
   // especially over video. Skip the filter wrapper entirely when it would be
@@ -122,13 +124,12 @@ export const SceneComponent: React.FC<{
       scene.kenBurns.enabled ? (
         <KenBurnsImage scene={scene} />
       ) : (
-        <Img src={scene.media.url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <Img src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       )
     ) : (
-      <Video
-        src={scene.media.url}
+      <OffthreadVideo
+        src={mediaUrl}
         style={{ width: "100%", height: "100%" }}
-        objectFit="cover"
         muted
       />
     );
