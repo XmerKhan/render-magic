@@ -5,7 +5,7 @@ import { KenBurnsImage } from "./KenBurnsImage";
 import { Caption } from "./Caption";
 import { MotionGraphics } from "./MotionGraphics";
 
-const COLOR_GRADES: Record
+const COLOR_GRADES: Record<
   ColorGradePreset,
   {
     contrast: number;
