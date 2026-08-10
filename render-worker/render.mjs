@@ -84,11 +84,12 @@ function replaceAssetUrls(value, localByKey) {
 function chooseConcurrency() {
   const override = Number(process.env.RENDER_CONCURRENCY);
   if (Number.isInteger(override) && override > 0) return Math.min(override, 8);
-  // GitHub-hosted runners are CPU-bound for Chromium rendering. Leave one
-  // logical CPU for the OS/FFmpeg and don't oversubscribe the renderer.
+  // OffthreadVideo uses its own FFmpeg extraction threads. On a 4-vCPU
+  // GitHub-hosted runner, three Chromium render tabs plus extraction threads
+  // oversubscribe the CPU and can cause severe stalls. Keep two render tabs.
   const cpuLimit = Math.max(1, os.cpus().length - 1);
   const memoryLimit = Math.max(1, Math.floor(os.freemem() / (1.5 * 1024 ** 3)));
-  return Math.min(6, cpuLimit, memoryLimit);
+  return Math.min(2, cpuLimit, memoryLimit);
 }
 
 function resourceSnapshot() {
@@ -132,8 +133,14 @@ async function main() {
   const composition = await selectComposition({ serveUrl, id: "main", inputProps, timeoutInMilliseconds: 220000 });
   const [frameFrom, frameTo] = claimed.frameRange;
   const concurrency = chooseConcurrency();
+  const offthreadVideoThreads = 2;
+  // Keep a larger OffthreadVideo frame cache so long source videos do not
+  // repeatedly evict decoded frames and fall back to expensive FFmpeg seeks.
+  // 4GB is safe on the 16GB GitHub runner while leaving headroom for Chromium.
+  const offthreadVideoCacheSizeInBytes = 4 * 1024 ** 3;
+
   console.log(`Rendering ${composition.width}x${composition.height} @ ${composition.fps}fps, frames ${frameFrom}-${frameTo}`);
-  console.log(`Resources: ${os.cpus().length} CPU(s), ${Math.round(os.totalmem() / 1024 ** 3)}GB RAM; concurrency ${concurrency}`);
+  console.log(`Resources: ${os.cpus().length} CPU(s), ${Math.round(os.totalmem() / 1024 ** 3)}GB RAM; concurrency ${concurrency}; OffthreadVideo cache 4096MB; video threads ${offthreadVideoThreads}`);
 
   let progress = 0;
   let renderedFrames = 0;
@@ -154,12 +161,16 @@ async function main() {
       outputLocation: OUTPUT_FILE,
       concurrency,
       crf: 18,
-      // Veryfast keeps the same H.264 quality target while substantially
-      // reducing CPU time spent in the final encode on CPU-only runners.
       x264Preset: "veryfast",
       frameRange: [frameFrom, frameTo],
-      chromiumOptions: { gl: "swangle" },
+      chromiumOptions: {
+        gl: "swangle",
+        enableMultiProcessOnLinux: true,
+      },
       timeoutInMilliseconds: 220000,
+      offthreadVideoCacheSizeInBytes,
+      offthreadVideoThreads,
+      logLevel: "verbose",
       onProgress: (state) => {
         progress = Math.round(state.progress * 100);
         renderedFrames = state.renderedFrames;
