@@ -48,7 +48,7 @@ export interface RenderJobPayload {
  * job rendering the entire video serially against the 60-minute job timeout.
  */
 export const CHUNK_TARGET_SECONDS = 30;
-export const CHUNK_MAX_COUNT = 18;
+export const CHUNK_MAX_COUNT = 15;
 
 export function computeChunkCount(durationInFrames: number, fps: number): number {
   const framesPerChunk = Math.max(1, Math.round(CHUNK_TARGET_SECONDS * fps));
