@@ -22,6 +22,14 @@ const STAGE_LABELS: Record<string, string> = {
   error: 'Error',
 };
 
+function formatTime(seconds: number | null | undefined) {
+  if (seconds === null || seconds === undefined) return 'Calculating…';
+  const safe = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(safe / 60);
+  const remainder = safe % 60;
+  return minutes > 0 ? `${minutes}m ${remainder}s` : `${remainder}s`;
+}
+
 export function RenderDialog({
   open,
   progress,
@@ -85,6 +93,33 @@ export function RenderDialog({
                   {Math.round(progress.progress)}%
                 </p>
               </div>
+
+              {(progress.totalChunks ?? 0) > 0 && (
+                <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-y border-zinc-800 py-4 text-xs">
+                  <div>
+                    <dt className="text-zinc-500">Current chunk</dt>
+                    <dd className="mt-1 font-mono text-zinc-200">
+                      {progress.currentChunk === null || progress.currentChunk === undefined
+                        ? 'Preparing'
+                        : `${progress.currentChunk + 1} / ${progress.totalChunks}`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-500">Completed</dt>
+                    <dd className="mt-1 font-mono text-zinc-200">
+                      {progress.completedChunks ?? 0} / {progress.totalChunks} chunks
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-500">Elapsed</dt>
+                    <dd className="mt-1 font-mono text-zinc-200">{formatTime(progress.elapsedSeconds)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-500">Estimated remaining</dt>
+                    <dd className="mt-1 font-mono text-zinc-200">{formatTime(progress.etaSeconds)}</dd>
+                  </div>
+                </dl>
+              )}
 
               <div className="mt-4 space-y-1.5">
                 {['parsing', 'validating', 'building', 'applying', 'rendering'].map((stage) => {

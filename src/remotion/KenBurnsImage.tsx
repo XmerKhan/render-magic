@@ -1,4 +1,4 @@
-import { Img, useCurrentFrame, useVideoConfig, interpolate } from 'remotion';
+import { Img, useCurrentFrame, useVideoConfig, staticFile } from 'remotion';
 import type { TimelineScene, KenBurnsConfig } from '@/types';
 
 const easeInOutCubic = (t: number) =>
@@ -23,6 +23,9 @@ export const KenBurnsImage: React.FC<{ scene: TimelineScene }> = ({ scene }) => 
 
   const progress = durationInFrames > 0 ? frame / durationInFrames : 0;
   const { scale, x, y } = getTransform(scene.kenBurns, progress);
+  const mediaUrl = scene.media.url.startsWith('worker-asset:')
+    ? staticFile(scene.media.url.slice('worker-asset:'.length))
+    : scene.media.url;
 
   return (
     <div
@@ -35,7 +38,7 @@ export const KenBurnsImage: React.FC<{ scene: TimelineScene }> = ({ scene }) => 
       }}
     >
       <Img
-        src={scene.media.url}
+        src={mediaUrl}
         style={{
           width: '100%',
           height: '100%',

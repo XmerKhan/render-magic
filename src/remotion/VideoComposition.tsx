@@ -1,4 +1,4 @@
-import { Sequence, useVideoConfig, useCurrentFrame, interpolate } from 'remotion';
+import { Sequence, useVideoConfig, useCurrentFrame, interpolate, staticFile } from 'remotion';
 import { Audio } from '@remotion/media';
 import { TransitionSeries } from '@remotion/transitions';
 import type { TimelineData, EditSettings } from '@/types';
@@ -14,6 +14,9 @@ export const VideoComposition: React.FC<{
   const frame = useCurrentFrame();
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
+  const resolveAsset = (url: string) => url.startsWith('worker-asset:')
+    ? staticFile(url.slice('worker-asset:'.length))
+    : url;
 
   // Voiceover fade in/out
   const fadeInFrames = Math.round(settings.voiceFadeInSec * fps);
@@ -48,12 +51,12 @@ export const VideoComposition: React.FC<{
   return (
     <>
       {timeline.voiceoverUrl && (
-        <Audio src={timeline.voiceoverUrl} volume={voiceoverVolume} />
+        <Audio src={resolveAsset(timeline.voiceoverUrl)} volume={voiceoverVolume} />
       )}
 
       {timeline.musicUrl && (
         <Audio
-          src={timeline.musicUrl}
+          src={resolveAsset(timeline.musicUrl)}
           volume={musicEndFade}
           loop
         />

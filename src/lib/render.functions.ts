@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { RenderJobPayload, RenderJobState, RenderUploadTarget } from "./renderTypes";
-import { computeChunkCount } from "./renderTypes";
+import { chunkFrameRange, chunkOutputPath, computeChunkCount } from "./renderTypes";
 
 const ASSETS_BUCKET = "render-assets";
 const OUTPUT_BUCKET = "renders";
@@ -155,6 +155,26 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
     const payload = job.payload as unknown as RenderJobPayload;
     const chunkCount = computeChunkCount(job.total_frames, payload.fps);
 
+    const chunks = Array.from({ length: chunkCount }, (_, chunkIndex) => {
+      const [frameFrom, frameTo] = chunkFrameRange(chunkIndex, chunkCount, job.total_frames);
+      return {
+        job_id: job.id,
+        chunk_index: chunkIndex,
+        frame_from: frameFrom,
+        frame_to: frameTo,
+        status: "queued",
+        progress: 0,
+        output_path: chunkOutputPath(job.id, chunkIndex),
+      };
+    });
+    const { error: chunkError } = await supabaseAdmin
+      .from("render_job_chunks")
+      .upsert(chunks, { onConflict: "job_id,chunk_index", ignoreDuplicates: true });
+    if (chunkError) {
+      console.error("[dispatchRenderJob] chunk checkpoint creation failed", chunkError);
+      throw new Error("Could not prepare resumable render chunks");
+    }
+
     const token = process.env["GITHUB_RENDER_TOKEN"];
     const repo = process.env["GITHUB_RENDER_REPO"];
     const workflow = process.env["GITHUB_RENDER_WORKFLOW"] ?? "render.yml";
@@ -220,7 +240,17 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
 
     await supabaseAdmin
       .from("render_jobs")
-      .update({ status: "dispatched", progress: 5, message: "Render worker starting up" })
+      .update({
+        status: "dispatched",
+        progress: 5,
+        message: "Render workers starting",
+        chunk_count: chunkCount,
+        chunk_progress: Array(chunkCount).fill(0),
+        chunk_attempts: Array(chunkCount).fill(0),
+        completed_chunks: 0,
+        current_chunk: null,
+        last_heartbeat_at: new Date().toISOString(),
+      })
       .eq("id", data.jobId);
 
     return { dispatched: true, status: "dispatched" as const };
@@ -235,7 +265,7 @@ export const getRenderJob = createServerFn({ method: "POST" })
     const { data: job, error } = await supabaseAdmin
       .from("render_jobs")
       .select(
-        "id, access_token, status, progress, message, error, output_path, rendered_frames, total_frames",
+        "id, access_token, status, progress, message, error, output_path, rendered_frames, total_frames, current_chunk, completed_chunks, chunk_count, elapsed_seconds, eta_seconds, last_heartbeat_at",
       )
       .eq("id", data.jobId)
       .maybeSingle();
@@ -249,7 +279,7 @@ export const getRenderJob = createServerFn({ method: "POST" })
     }
 
     let downloadUrl: string | null = null;
-    if (job.status === "done" && job.output_path) {
+    if ((job.status === "done" || job.status === "completed") && job.output_path) {
       const { data: signed, error: signError } = await supabaseAdmin.storage
         .from(OUTPUT_BUCKET)
         .createSignedUrl(job.output_path, DOWNLOAD_URL_TTL, {
@@ -271,5 +301,11 @@ export const getRenderJob = createServerFn({ method: "POST" })
       downloadUrl,
       renderedFrames: job.rendered_frames,
       totalFrames: job.total_frames,
+      currentChunk: job.current_chunk,
+      completedChunks: job.completed_chunks,
+      totalChunks: job.chunk_count,
+      elapsedSeconds: job.elapsed_seconds,
+      etaSeconds: job.eta_seconds,
+      lastHeartbeatAt: job.last_heartbeat_at,
     };
   });

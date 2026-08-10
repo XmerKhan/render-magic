@@ -10,8 +10,8 @@ const ASSETS_BUCKET = "render-assets";
 const POLL_INTERVAL_MS = 2000;
 const POLL_BACKOFF_MAX_MS = 15000;
 const MAX_CONSECUTIVE_POLL_FAILURES = 8;
-/** Safety net so a runner that dies silently doesn't hang the UI forever. */
-const POLL_TIMEOUT_MS = 45 * 60 * 1000;
+/** A worker is dead only when its server heartbeat is stale, not because a long render is slow. */
+const STALE_HEARTBEAT_MS = 15 * 60 * 1000;
 
 export interface ExportOptions {
   timeline: TimelineData;
@@ -19,8 +19,16 @@ export interface ExportOptions {
   assets: MediaAsset[];
   voiceoverFile: File | null;
   musicFile: File | null;
-  onProgress: (progress: number, message: string) => void;
+  onProgress: (progress: number, message: string, state?: RenderProgressDetails) => void;
   signal?: AbortSignal;
+}
+
+export interface RenderProgressDetails {
+  currentChunk: number | null;
+  completedChunks: number;
+  totalChunks: number;
+  elapsedSeconds: number;
+  etaSeconds: number | null;
 }
 
 class CancelledError extends Error {
@@ -199,7 +207,6 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
   await dispatchRenderJob({ data: { jobId: job.jobId, token: job.token } });
 
   // --- Poll ---------------------------------------------------------------
-  const startedAt = Date.now();
   let consecutiveFailures = 0;
   let lastMessage = "Waiting for the render worker...";
 
@@ -211,12 +218,6 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
         : Math.min(POLL_BACKOFF_MAX_MS, POLL_INTERVAL_MS * 2 ** consecutiveFailures),
       signal,
     );
-
-    if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-      throw new Error(
-        "The render worker stopped responding. Check the render workflow run, then try again.",
-      );
-    }
 
     let state: Awaited<ReturnType<typeof getRenderJob>>;
     try {
@@ -240,14 +241,38 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
       throw new Error(state.error ?? "The render failed on the worker");
     }
 
+    if (
+      state.lastHeartbeatAt &&
+      (state.status === "rendering" || state.status === "retrying" || state.status === "encoding") &&
+      Date.now() - new Date(state.lastHeartbeatAt).getTime() > STALE_HEARTBEAT_MS
+    ) {
+      throw new Error(`Render heartbeat was lost while processing chunk ${(state.currentChunk ?? 0) + 1}/${state.totalChunks}. Completed chunks are saved; retrying the workflow will resume them.`);
+    }
+
     if (state.status === "done") {
       if (!state.downloadUrl) throw new Error("The render finished but no download link was returned");
       onProgress(100, "Render complete");
       return state.downloadUrl;
     }
 
-    lastMessage = state.message || "Rendering...";
+    const chunkDetail = state.totalChunks > 1
+      ? ` · ${state.completedChunks}/${state.totalChunks} chunks · ${formatDuration(state.elapsedSeconds)} elapsed${state.etaSeconds === null ? "" : ` · ~${formatDuration(state.etaSeconds)} left`}`
+      : "";
+    lastMessage = `${state.message || "Rendering..."}${chunkDetail}`;
     // Map worker progress (0-100) onto the 13-99 range we own.
-    onProgress(13 + (state.progress / 100) * 86, lastMessage);
+    onProgress(13 + (state.progress / 100) * 86, lastMessage, {
+      currentChunk: state.currentChunk,
+      completedChunks: state.completedChunks,
+      totalChunks: state.totalChunks,
+      elapsedSeconds: state.elapsedSeconds,
+      etaSeconds: state.etaSeconds,
+    });
   }
+}
+
+function formatDuration(seconds: number): string {
+  const safe = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(safe / 60);
+  const remainder = safe % 60;
+  return minutes > 0 ? `${minutes}m ${remainder}s` : `${remainder}s`;
 }
