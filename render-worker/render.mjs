@@ -84,6 +84,8 @@ function replaceAssetUrls(value, localByKey) {
 function chooseConcurrency() {
   const override = Number(process.env.RENDER_CONCURRENCY);
   if (Number.isInteger(override) && override > 0) return Math.min(override, 8);
+  // GitHub-hosted runners are CPU-bound for Chromium rendering. Leave one
+  // logical CPU for the OS/FFmpeg and don't oversubscribe the renderer.
   const cpuLimit = Math.max(1, os.cpus().length - 1);
   const memoryLimit = Math.max(1, Math.floor(os.freemem() / (1.5 * 1024 ** 3)));
   return Math.min(6, cpuLimit, memoryLimit);
@@ -152,6 +154,9 @@ async function main() {
       outputLocation: OUTPUT_FILE,
       concurrency,
       crf: 18,
+      // Veryfast keeps the same H.264 quality target while substantially
+      // reducing CPU time spent in the final encode on CPU-only runners.
+      x264Preset: "veryfast",
       frameRange: [frameFrom, frameTo],
       chromiumOptions: { gl: "swangle" },
       timeoutInMilliseconds: 220000,
