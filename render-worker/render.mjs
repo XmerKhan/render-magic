@@ -144,30 +144,65 @@ async function main() {
   console.log(`Detected ${cpuCount} CPU core(s); using concurrency ${concurrency}`);
 
   let lastReported = 0;
-  await renderMedia({
-    composition,
-    serveUrl,
-    codec: "h264",
-    inputProps,
-    outputLocation: OUTPUT_FILE,
-    concurrency,
-    crf: 18,
-    frameRange: [frameFrom, frameTo],
-    chromiumOptions: { gl: "swangle" },
-    // Default is 30s. With many chunks fetching media from Supabase Storage
-    // in parallel, an individual image/audio load can occasionally take
-    // longer than that under contention - better to wait than to crash.
-    timeoutInMilliseconds: 220000,
-    onProgress: ({ renderedFrames, progress, stitchStage }) => {
-      const pct = Math.round(progress * 100);
-      if (pct - lastReported < 2) return;
-      lastReported = pct;
-      void reportProgress(pct, stitchStage === "muxing" ? "Encoding chunk" : "Rendering frames", {
-        status: stitchStage === "muxing" ? "encoding" : "rendering",
-        renderedFrames,
-      });
-    },
-  });
+  let lastProgressAt = Date.now();
+  let lastRenderedFrames = 0;
+
+  // Watchdog: if no progress event arrives for STALL_TIMEOUT_MS, something
+  // has silently hung (network stall fetching an asset, a wedged Chrome
+  // process, etc.) in a way that doesn't hit any individual timeout inside
+  // Remotion. Without this, the job just sits until GitHub's 45-60 minute
+  // job timeout kills it with zero diagnostic information. This makes a
+  // hung render fail fast with a clear message instead.
+  const STALL_TIMEOUT_MS = 120_000; // 2 minutes with no progress = stalled
+  const CHECK_INTERVAL_MS = 15_000;
+
+  const watchdog = setInterval(() => {
+    const stalledFor = Date.now() - lastProgressAt;
+    if (stalledFor > STALL_TIMEOUT_MS) {
+      console.error(
+        `STALL DETECTED: no render progress for ${Math.round(stalledFor / 1000)}s ` +
+          `(stuck at frame ${lastRenderedFrames}, ${lastReported}%). ` +
+          `Failing fast instead of waiting for the job timeout.`,
+      );
+      reportProgress(lastReported, `Stalled at frame ${lastRenderedFrames} - no progress for ${Math.round(stalledFor / 1000)}s`, {
+        status: "stalled",
+      }).finally(() => process.exit(1));
+    } else if (stalledFor > CHECK_INTERVAL_MS * 2) {
+      console.log(`(watchdog: ${Math.round(stalledFor / 1000)}s since last progress)`);
+    }
+  }, CHECK_INTERVAL_MS);
+  watchdog.unref?.();
+
+  try {
+    await renderMedia({
+      composition,
+      serveUrl,
+      codec: "h264",
+      inputProps,
+      outputLocation: OUTPUT_FILE,
+      concurrency,
+      crf: 18,
+      frameRange: [frameFrom, frameTo],
+      chromiumOptions: { gl: "swangle" },
+      // Default is 30s. With many chunks fetching media from Supabase Storage
+      // in parallel, an individual image/audio load can occasionally take
+      // longer than that under contention - better to wait than to crash.
+      timeoutInMilliseconds: 220000,
+      onProgress: ({ renderedFrames, progress, stitchStage }) => {
+        lastProgressAt = Date.now();
+        lastRenderedFrames = renderedFrames;
+        const pct = Math.round(progress * 100);
+        if (pct - lastReported < 2) return;
+        lastReported = pct;
+        void reportProgress(pct, stitchStage === "muxing" ? "Encoding chunk" : "Rendering frames", {
+          status: stitchStage === "muxing" ? "encoding" : "rendering",
+          renderedFrames,
+        });
+      },
+    });
+  } finally {
+    clearInterval(watchdog);
+  }
 
   const stats = fs.statSync(OUTPUT_FILE);
   if (!stats.size) throw new Error("Remotion produced an empty file");
