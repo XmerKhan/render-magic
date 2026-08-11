@@ -4,8 +4,6 @@ import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
 import { clockWipe } from "@remotion/transitions/clock-wipe";
 import { iris } from "@remotion/transitions/iris";
-import { linearBlur } from "@remotion/transitions/linear-blur";
-import { zoomBlur } from "@remotion/transitions/zoom-blur";
 import { pushCut } from "@remotion/transitions/push-cut";
 import { dissolve } from "@remotion/transitions/dissolve";
 import { linearTiming } from "@remotion/transitions";
@@ -19,13 +17,34 @@ import { AbsoluteFill } from "remotion";
  */
 const flashWhite = (): TransitionPresentation<Record<string, never>> => ({
   component: ({ children, presentationProgress, presentationDirection }) => {
-    // Peaks at the midpoint of the transition.
     const flash = Math.sin(presentationProgress * Math.PI);
     const opacity = presentationDirection === "exiting" ? 1 : presentationProgress;
     return (
       <AbsoluteFill style={{ opacity }}>
         {children}
         <AbsoluteFill style={{ backgroundColor: "white", opacity: flash, pointerEvents: "none" }} />
+      </AbsoluteFill>
+    );
+  },
+  props: {},
+});
+
+/**
+ * Blur transitions are extremely expensive in software-rendered Chromium at
+ * 1080p because the blur is recalculated over a full frame for every transition
+ * frame. Keep the same general motion language with scale + opacity, which is
+ * compositor-friendly and substantially cheaper.
+ */
+const fastZoom = (): TransitionPresentation<Record<string, never>> => ({
+  component: ({ children, presentationProgress, presentationDirection }) => {
+    const entering = presentationDirection === "entering";
+    const opacity = entering ? presentationProgress : 1 - presentationProgress;
+    const scale = entering
+      ? 1.08 - presentationProgress * 0.08
+      : 1 + presentationProgress * 0.08;
+    return (
+      <AbsoluteFill style={{ opacity, transform: `scale(${scale})` }}>
+        {children}
       </AbsoluteFill>
     );
   },
@@ -54,7 +73,6 @@ export function getTransition(
     case "slide-down":
       return { presentation: slide({ direction: "from-bottom" }), timing };
     case "whip-pan":
-      // A whip pan is a very fast slide, so it uses a shortened timing.
       return {
         presentation: slide({ direction: "from-right" }),
         timing: linearTiming({
@@ -62,9 +80,8 @@ export function getTransition(
         }),
       };
     case "zoom-blur":
-      return { presentation: zoomBlur({}), timing };
+      return { presentation: fastZoom(), timing };
     case "hard-cut":
-      // A hard cut is an instant change, not a short crossfade.
       return { presentation: fade({}), timing: linearTiming({ durationInFrames: 1 }) };
     case "wipe":
     case "wipe-left":
@@ -83,8 +100,6 @@ export function getTransition(
       return { presentation: flashWhite(), timing };
     case "push":
       return { presentation: pushCut({}), timing };
-    // pushCut has no direction option, so directional pushes use slide, which
-    // moves both scenes together — the actual "push" look.
     case "push-left":
       return { presentation: slide({ direction: "from-left" }), timing };
     case "push-right":
@@ -94,7 +109,7 @@ export function getTransition(
     case "push-down":
       return { presentation: slide({ direction: "from-bottom" }), timing };
     case "blur-dissolve":
-      return { presentation: linearBlur({}), timing };
+      return { presentation: fade({}), timing };
     case "star-wipe":
       return { presentation: wipe({ direction: "from-top-left" }), timing };
     case "clock-wipe":
@@ -107,19 +122,7 @@ export function getTransition(
 /**
  * `<TransitionSeries>` overlaps consecutive scenes during each transition, so
  * its total rendered duration is `sum(scene durations) - sum(transition
- * durations)`, not the naive sum — see
- * https://www.remotion.dev/docs/transitions/transitionseries
- * ("During the transition, both scenes are rendered simultaneously and the
- * total duration is shortened by the transition length.").
- *
- * Anything that needs to know the composition's real duration (chunking math,
- * the outer <Sequence> wrapping <TransitionSeries> in VideoComposition, intro/
- * outro placement) must subtract this, or the tail of the video ends up
- * silently blank: the outer Sequence keeps allocating frames past the point
- * TransitionSeries has any content left to show, while the voiceover — a
- * separate, timeline-independent <Audio> — keeps playing right through it.
- * The gap is invisible on a 2-3 scene test clip and only becomes large enough
- * to notice with dozens or hundreds of scenes, i.e. exactly a long video.
+ * durations)`, not the naive sum.
  */
 export function totalTransitionShrinkFrames(
   scenes: { transitionOut: TransitionType }[],
