@@ -60,6 +60,12 @@ function safeAssetName(key, url) {
   return `${key.replace(/[^a-zA-Z0-9_-]/g, "_")}${extension}`;
 }
 
+function resolveWorkerAssetUrl(url) {
+  if (!url.startsWith("worker-asset:")) return url;
+  const relativePath = url.slice("worker-asset:".length).replace(/^\/+/, "");
+  return `${APP_URL}/${relativePath}`;
+}
+
 async function optimizeStillImage(source, destination, width, height) {
   await run("ffmpeg", [
     "-y", "-v", "error", "-i", source,
@@ -94,7 +100,17 @@ async function downloadAssets(signedAssets, timeline, width, height) {
   const localByKey = {};
   const kindByUrl = new Map();
   for (const scene of timeline?.scenes ?? []) kindByUrl.set(scene?.media?.url, scene?.media?.kind);
-  await Promise.all(Object.entries(signedAssets).map(async ([key, url]) => {
+
+  await Promise.all(Object.entries(signedAssets).map(async ([key, sourceUrl]) => {
+    // The app can persist a local worker asset marker in the render payload.
+    // Remotion cannot download a custom `worker-asset:` URL directly. Resolve
+    // it back to the app's public asset URL before downloading it into this
+    // worker's isolated public directory.
+    const url = resolveWorkerAssetUrl(sourceUrl);
+    if (!/^https?:\/\//i.test(url)) {
+      throw new Error(`Invalid render asset URL for ${key}: ${sourceUrl}`);
+    }
+
     const filename = safeAssetName(key, url);
     const destination = path.join(ASSET_DIR, filename);
     const response = await fetch(url);
@@ -105,7 +121,7 @@ async function downloadAssets(signedAssets, timeline, width, height) {
       close() { return new Promise((resolve) => file.end(resolve)); },
       abort(error) { file.destroy(error); },
     }));
-    if (kindByUrl.get(url) === "image") {
+    if (kindByUrl.get(sourceUrl) === "image" || kindByUrl.get(url) === "image") {
       const optimizedName = `${key.replace(/[^a-zA-Z0-9_-]/g, "_")}-render.jpg`;
       await optimizeStillImage(destination, path.join(ASSET_DIR, optimizedName), width, height);
       fs.rmSync(destination);
@@ -129,9 +145,6 @@ function replaceAssetUrls(value, localByKey) {
 function chooseConcurrency() {
   const override = Number(process.env.RENDER_CONCURRENCY);
   if (Number.isInteger(override) && override > 0) return Math.min(override, 8);
-  // OffthreadVideo uses its own FFmpeg extraction threads. On a 4-vCPU
-  // GitHub-hosted runner, three Chromium render tabs plus extraction threads
-  // oversubscribe the CPU and can cause severe stalls. Keep two render tabs.
   const cpuLimit = Math.max(1, os.cpus().length - 1);
   const memoryLimit = Math.max(1, Math.floor(os.freemem() / (1.5 * 1024 ** 3)));
   return Math.min(2, cpuLimit, memoryLimit);
@@ -188,9 +201,6 @@ async function main() {
   const [frameFrom, frameTo] = claimed.frameRange;
   const concurrency = chooseConcurrency();
   const offthreadVideoThreads = 1;
-  // Keep a larger OffthreadVideo frame cache so long source videos do not
-  // repeatedly evict decoded frames and fall back to expensive FFmpeg seeks.
-  // 4GB is safe on the 16GB GitHub runner while leaving headroom for Chromium.
   const offthreadVideoCacheSizeInBytes = 4 * 1024 ** 3;
 
   console.log(`Rendering ${composition.width}x${composition.height} @ ${composition.fps}fps, frames ${frameFrom}-${frameTo}`);
