@@ -53,7 +53,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libnss3 libatk1.0-0 libatk-bridge.2.0-0 libcups2 libdrm2 \
+            libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
             libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
             libgbm1 libpango-1.0-0 libcairo2 libasound2t64 ffmpeg
 
@@ -91,7 +91,10 @@ jobs:
           CHUNK_INDEX: ${{ matrix.chunk_index }}
           CHUNK_COUNT: ${{ inputs.chunk_count }}
           MAX_CHUNK_ATTEMPTS: 3
-          RENDER_CONCURRENCY: 4
+          # Keep two render processes on the 4-vCPU GitHub runner. Each
+          # process also uses Chromium + OffthreadVideo threads, so 4 processes
+          # oversubscribes the CPU and previously caused stalls/crashes.
+          RENDER_CONCURRENCY: 2
         run: |
           for attempt in 1 2 3; do
             echo "Chunk attempt $attempt/3"
