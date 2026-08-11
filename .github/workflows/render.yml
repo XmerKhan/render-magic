@@ -33,9 +33,8 @@ jobs:
   render:
     needs: prepare
     runs-on: ubuntu-latest
-    # Long 1080p CPU renders can take well over 90 minutes on GitHub-hosted
-    # runners. Chunks remain independently checkpointed and retried, so this
-    # only prevents a slow chunk from being killed before it can finish.
+    # GitHub-hosted jobs can run for up to 6 hours. Keep a slow chunk alive
+    # for up to 5 hours while completed chunks remain checkpointed independently.
     timeout-minutes: 300
     strategy:
       fail-fast: false
@@ -48,6 +47,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: render-worker/package-lock.json
 
       - name: Install Chromium dependencies
         run: |
@@ -65,7 +66,7 @@ jobs:
 
       - name: Install worker dependencies
         working-directory: render-worker
-        run: npm install --no-audit --no-fund || (sleep 10 && npm install --no-audit --no-fund) || (sleep 20 && npm install --no-audit --no-fund)
+        run: npm ci --no-audit --no-fund
 
       - name: Cache app node_modules
         uses: actions/cache@v4
@@ -74,13 +75,13 @@ jobs:
           key: app-node-modules-${{ hashFiles('package-lock.json', 'package.json') }}
 
       - name: Install app dependencies (for composition module resolution)
-        run: npm install --no-audit --no-fund || (sleep 10 && npm install --no-audit --no-fund) || (sleep 20 && npm install --no-audit --no-fund)
+        run: npm ci --no-audit --no-fund
 
       - name: Cache Chrome Headless Shell
         uses: actions/cache@v4
         with:
           path: render-worker/node_modules/.remotion
-          key: chrome-headless-shell-${{ hashFiles('render-worker/package.json') }}
+          key: chrome-headless-shell-${{ hashFiles('render-worker/package-lock.json', 'render-worker/package.json') }}
 
       - name: Render chunk
         working-directory: render-worker
@@ -91,9 +92,9 @@ jobs:
           CHUNK_INDEX: ${{ matrix.chunk_index }}
           CHUNK_COUNT: ${{ inputs.chunk_count }}
           MAX_CHUNK_ATTEMPTS: 3
-          # Keep two render processes on the 4-vCPU GitHub runner. Each
-          # process also uses Chromium + OffthreadVideo threads, so 4 processes
-          # oversubscribes the CPU and previously caused stalls/crashes.
+          # Keep two render processes on the 4-vCPU GitHub runner. Each process
+          # also uses browser/media work, so four processes previously caused
+          # CPU oversubscription and long stalls/crashes.
           RENDER_CONCURRENCY: 2
         run: |
           for attempt in 1 2 3; do
@@ -116,6 +117,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: render-worker/package-lock.json
 
       - name: Install ffmpeg
         run: |
