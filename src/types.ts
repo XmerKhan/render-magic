@@ -30,50 +30,18 @@ export interface ScriptSegment {
 }
 
 export type TransitionType =
-  | 'crossfade'
-  | 'slide-left'
-  | 'slide-right'
-  | 'slide-up'
-  | 'slide-down'
-  | 'whip-pan'
-  | 'zoom-blur'
-  | 'hard-cut'
-  | 'wipe'
-  | 'wipe-left'
-  | 'wipe-right'
-  | 'wipe-up'
-  | 'wipe-down'
-  | 'iris-wipe'
-  | 'glitch'
-  | 'flash-white'
-  | 'push'
-  | 'push-left'
-  | 'push-right'
-  | 'push-up'
-  | 'push-down'
-  | 'blur-dissolve'
-  | 'star-wipe'
-  | 'clock-wipe';
+  | 'crossfade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down'
+  | 'whip-pan' | 'zoom-blur' | 'hard-cut' | 'wipe' | 'wipe-left' | 'wipe-right'
+  | 'wipe-up' | 'wipe-down' | 'iris-wipe' | 'glitch' | 'flash-white' | 'push'
+  | 'push-left' | 'push-right' | 'push-up' | 'push-down' | 'blur-dissolve'
+  | 'star-wipe' | 'clock-wipe';
 
 export type KenBurnsDirection =
-  | 'zoom-in'
-  | 'zoom-out'
-  | 'pan-left'
-  | 'pan-right'
-  | 'pan-up'
-  | 'pan-down'
-  | 'zoom-in-pan-left'
-  | 'zoom-in-pan-right'
-  | 'zoom-in-pan-up'
-  | 'zoom-in-pan-down'
-  | 'zoom-out-pan-left'
-  | 'zoom-out-pan-right'
-  | 'zoom-out-pan-up'
-  | 'zoom-out-pan-down'
-  | 'static';
+  | 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down'
+  | 'zoom-in-pan-left' | 'zoom-in-pan-right' | 'zoom-in-pan-up' | 'zoom-in-pan-down'
+  | 'zoom-out-pan-left' | 'zoom-out-pan-right' | 'zoom-out-pan-up' | 'zoom-out-pan-down' | 'static';
 
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:5';
-
 export type CaptionStyle = 'none' | 'fade' | 'slide' | 'typewriter' | 'karaoke';
 export type CaptionPosition = 'lower-third' | 'center' | 'top';
 export type CaptionFontFamily = 'inter' | 'roboto-mono' | 'georgia' | 'system';
@@ -102,6 +70,14 @@ export interface CaptionSettings {
   timingOffsetMs: number;
 }
 
+export interface MotionGraphicsSettings {
+  lowerThird: boolean;
+  callout: boolean;
+  dateStamp: boolean;
+  location: boolean;
+  quoteCard: boolean;
+}
+
 export interface EditSettings {
   fps: number;
   aspectRatio: AspectRatio;
@@ -112,6 +88,7 @@ export interface EditSettings {
   captionSettings: CaptionSettings;
   colorGrade: ColorGradePreset;
   manualColorGrade: ManualColorGrade;
+  motionGraphics?: MotionGraphicsSettings;
   exportResolution: ExportResolution;
   exportFormat: ExportFormat;
   showIntro: boolean;
@@ -172,15 +149,7 @@ export interface TimelineData {
   settings: EditSettings;
 }
 
-export type PipelineStage =
-  | 'idle'
-  | 'parsing'
-  | 'validating'
-  | 'building'
-  | 'applying'
-  | 'rendering'
-  | 'done'
-  | 'error';
+export type PipelineStage = 'idle' | 'parsing' | 'validating' | 'building' | 'applying' | 'rendering' | 'done' | 'error';
 
 export interface PipelineProgress {
   stage: PipelineStage;
