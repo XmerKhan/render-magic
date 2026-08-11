@@ -1,10 +1,10 @@
-import { Sequence, useVideoConfig, useCurrentFrame, interpolate, staticFile } from "remotion";
+import { Freeze, Sequence, useVideoConfig, useCurrentFrame, interpolate, staticFile } from "remotion";
 import { Audio } from "@remotion/media";
 import { TransitionSeries } from "@remotion/transitions";
 import type { TimelineData, EditSettings } from "@/types";
 import { SceneComponent } from "./SceneComponent";
 import { IntroOutro } from "./IntroOutro";
-import { getTransition, totalTransitionShrinkFrames } from "./transitions";
+import { getTransition } from "./transitions";
 
 function resolveAudioSource(url?: string | null) {
   if (!url) return url;
@@ -22,31 +22,41 @@ export const VideoComposition: React.FC<{
   const frame = useCurrentFrame();
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
-  // <TransitionSeries> overlaps consecutive scenes during each transition, so
-  // its real rendered length is shorter than the naive sum of scene durations
-  // - see totalTransitionShrinkFrames(). Everything below that positions
-  // content relative to "where the scenes actually end" must use this, not
-  // timeline.totalFrames, or the outro/ducking/outer-Sequence math drifts out
-  // of sync with what TransitionSeries is actually showing.
-  const scenesFrames = Math.max(
-    0,
-    timeline.totalFrames -
-      totalTransitionShrinkFrames(timeline.scenes, fps, settings.transitionDuration),
-  );
 
-  const fadeInFrames = Math.round(settings.voiceFadeInSec * fps);
-  const fadeOutFrames = Math.round(settings.voiceFadeOutSec * fps);
+  // TransitionSeries overlaps neighboring sequences. Instead of shortening the
+  // entire timeline (which cumulatively moves every later scene earlier than
+  // the script/voiceover), each outgoing scene now owns a frozen tail equal to
+  // its transition duration. This keeps every scene boundary on the original
+  // script timeline while still allowing the visual transition to overlap.
+  const scenesFrames = Math.max(0, timeline.totalFrames);
+
+  const voiceoverFrames = Math.max(
+    0,
+    Math.round((timeline.voiceoverDurationSec || 0) * fps),
+  );
+  const voiceoverEndFrame = Math.min(
+    durationInFrames,
+    introFrames + voiceoverFrames,
+  );
+  const fadeInFrames = Math.max(0, Math.round(settings.voiceFadeInSec * fps));
+  const fadeOutFrames = Math.max(0, Math.round(settings.voiceFadeOutSec * fps));
   const voiceoverVolume =
-    timeline.voiceoverUrl && timeline.voiceoverDurationSec > 0
+    timeline.voiceoverUrl && voiceoverFrames > 0
       ? interpolate(
           frame,
-          [0, fadeInFrames, durationInFrames - fadeOutFrames, durationInFrames],
+          [
+            introFrames,
+            introFrames + fadeInFrames,
+            Math.max(introFrames + fadeInFrames, voiceoverEndFrame - fadeOutFrames),
+            voiceoverEndFrame,
+          ],
           [0, 1, 1, 0],
           { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
         )
       : 0;
 
-  const voiceoverActive = frame >= introFrames && frame < introFrames + scenesFrames;
+  const voiceoverActive =
+    frame >= introFrames && frame < voiceoverEndFrame;
   const duckedMusicVolume = settings.autoDuck
     ? voiceoverActive
       ? settings.musicVolume * 0.2
@@ -55,7 +65,7 @@ export const VideoComposition: React.FC<{
 
   const musicEndFade = interpolate(
     frame,
-    [durationInFrames - fps * 2, durationInFrames],
+    [Math.max(0, durationInFrames - fps * 2), durationInFrames],
     [duckedMusicVolume, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
@@ -65,7 +75,11 @@ export const VideoComposition: React.FC<{
 
   return (
     <>
-      {voiceoverSrc && <Audio src={voiceoverSrc} volume={voiceoverVolume} />}
+      {voiceoverSrc && (
+        <Sequence from={introFrames} durationInFrames={voiceoverFrames}>
+          <Audio src={voiceoverSrc} volume={voiceoverVolume} />
+        </Sequence>
+      )}
 
       {musicSrc && <Audio src={musicSrc} volume={musicEndFade} loop />}
 
@@ -83,15 +97,35 @@ export const VideoComposition: React.FC<{
       <Sequence from={introFrames} durationInFrames={scenesFrames}>
         <TransitionSeries>
           {timeline.scenes.map((scene, i) => {
-            const items: React.ReactNode[] = [];
+            const isLast = i === timeline.scenes.length - 1;
+            const transitionHoldFrames = isLast
+              ? 0
+              : getTransition(
+                  scene.transitionOut,
+                  fps,
+                  settings.transitionDuration,
+                  width,
+                  height,
+                ).timing.getDurationInFrames({ fps });
+            const sequenceDuration = scene.durationFrames + transitionHoldFrames;
 
+            const items: React.ReactNode[] = [];
             items.push(
-              <TransitionSeries.Sequence key={scene.id} durationInFrames={scene.durationFrames}>
-                <SceneComponent scene={scene} settings={settings} />
+              <TransitionSeries.Sequence key={scene.id} durationInFrames={sequenceDuration}>
+                <Sequence durationInFrames={scene.durationFrames}>
+                  <SceneComponent scene={scene} settings={settings} />
+                </Sequence>
+                {transitionHoldFrames > 0 && (
+                  <Sequence from={scene.durationFrames} durationInFrames={transitionHoldFrames}>
+                    <Freeze frame={scene.durationFrames - 1}>
+                      <SceneComponent scene={scene} settings={settings} />
+                    </Freeze>
+                  </Sequence>
+                )}
               </TransitionSeries.Sequence>,
             );
 
-            if (i < timeline.scenes.length - 1) {
+            if (!isLast) {
               const { presentation, timing } = getTransition(
                 scene.transitionOut,
                 fps,
