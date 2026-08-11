@@ -1,10 +1,18 @@
-import { Sequence, useVideoConfig, useCurrentFrame, interpolate } from "remotion";
+import { Sequence, useVideoConfig, useCurrentFrame, interpolate, staticFile } from "remotion";
 import { Audio } from "@remotion/media";
 import { TransitionSeries } from "@remotion/transitions";
 import type { TimelineData, EditSettings } from "@/types";
 import { SceneComponent } from "./SceneComponent";
 import { IntroOutro } from "./IntroOutro";
 import { getTransition, totalTransitionShrinkFrames } from "./transitions";
+
+function resolveAudioSource(url?: string | null) {
+  if (!url) return url;
+  if (url.startsWith("worker-asset:")) {
+    return staticFile(url.slice("worker-asset:".length).replace(/^\/+/, ""));
+  }
+  return url;
+}
 
 export const VideoComposition: React.FC<{
   timeline: TimelineData;
@@ -26,7 +34,6 @@ export const VideoComposition: React.FC<{
       totalTransitionShrinkFrames(timeline.scenes, fps, settings.transitionDuration),
   );
 
-  // Voiceover fade in/out
   const fadeInFrames = Math.round(settings.voiceFadeInSec * fps);
   const fadeOutFrames = Math.round(settings.voiceFadeOutSec * fps);
   const voiceoverVolume =
@@ -39,7 +46,6 @@ export const VideoComposition: React.FC<{
         )
       : 0;
 
-  // Auto-ducking: lower music when voiceover is playing
   const voiceoverActive = frame >= introFrames && frame < introFrames + scenesFrames;
   const duckedMusicVolume = settings.autoDuck
     ? voiceoverActive
@@ -47,7 +53,6 @@ export const VideoComposition: React.FC<{
       : settings.musicVolume
     : settings.musicVolume;
 
-  // Music fade out at end
   const musicEndFade = interpolate(
     frame,
     [durationInFrames - fps * 2, durationInFrames],
@@ -55,11 +60,14 @@ export const VideoComposition: React.FC<{
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
 
+  const voiceoverSrc = resolveAudioSource(timeline.voiceoverUrl);
+  const musicSrc = resolveAudioSource(timeline.musicUrl);
+
   return (
     <>
-      {timeline.voiceoverUrl && <Audio src={timeline.voiceoverUrl} volume={voiceoverVolume} />}
+      {voiceoverSrc && <Audio src={voiceoverSrc} volume={voiceoverVolume} />}
 
-      {timeline.musicUrl && <Audio src={timeline.musicUrl} volume={musicEndFade} loop />}
+      {musicSrc && <Audio src={musicSrc} volume={musicEndFade} loop />}
 
       {settings.showIntro && (
         <Sequence from={0} durationInFrames={introFrames}>
