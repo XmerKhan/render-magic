@@ -1,4 +1,5 @@
-import { Img, OffthreadVideo, staticFile } from "remotion";
+import { Img, OffthreadVideo, staticFile, useRemotionEnvironment } from "remotion";
+import { Video } from "@remotion/media";
 import { memo } from "react";
 import type { TimelineScene, EditSettings, ColorGradePreset } from "@/types";
 import { KenBurnsImage } from "./KenBurnsImage";
@@ -21,15 +22,23 @@ const Vignette: React.FC<{ intensity: number }> = memo(({ intensity }) => {
   );
 });
 
-// Stable texture: the old implementation generated a new SVG/data URL for
-// every frame. Keep one deterministic texture so Chromium can reuse it.
-const FILM_GRAIN_IMAGE =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' seed='17' /%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.75' /%3E%3C/svg%3E\")";
+// Keep film grain as a static, precomputed texture. SVG feTurbulence is a
+// procedural filter and can be rasterized repeatedly by headless Chromium,
+// which is disproportionately expensive at 1920x1080. A tiled set of static
+// dots gives a similar texture while allowing Chromium to cache the image.
+const FILM_GRAIN_RECTS = Array.from({ length: 180 }, (_, i) => {
+  const x = (i * 37) % 200;
+  const y = (i * 83) % 200;
+  const opacity = ((i * 17) % 60 + 20) / 100;
+  const size = i % 5 === 0 ? 2 : 1;
+  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" opacity="${opacity}"/>`;
+}).join("");
+const FILM_GRAIN_IMAGE = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">${FILM_GRAIN_RECTS}</svg>`)}")`;
 
 const FilmGrain: React.FC<{ amount: number }> = memo(({ amount }) => {
   if (amount <= 0) return null;
   return (
-    <div style={{ position: "absolute", inset: 0, opacity: amount * 0.25, backgroundImage: FILM_GRAIN_IMAGE, pointerEvents: "none", mixBlendMode: "overlay" }} />
+    <div style={{ position: "absolute", inset: 0, opacity: amount * 0.25, backgroundImage: FILM_GRAIN_IMAGE, backgroundRepeat: "repeat", pointerEvents: "none", mixBlendMode: "overlay" }} />
   );
 });
 
@@ -43,9 +52,12 @@ export const SceneComponent: React.FC<{ scene: TimelineScene; settings: EditSett
   const filterStr = `contrast(${contrast}) saturate(${saturation}) brightness(${brightness}) sepia(${preset.sepia}) hue-rotate(${preset.hueRotate}deg)`;
   const mediaUrl = scene.media.url.startsWith("worker-asset:") ? staticFile(scene.media.url.slice("worker-asset:".length)) : scene.media.url;
   const hasColorGrade = contrast !== 1 || saturation !== 1 || brightness !== 1 || preset.sepia !== 0 || preset.hueRotate !== 0;
+  const env = useRemotionEnvironment();
 
   const media = scene.media.kind === "image" ? (
     scene.kenBurns.enabled ? <KenBurnsImage scene={scene} /> : <Img src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+  ) : env.isRendering ? (
+    <Video src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
   ) : (
     <OffthreadVideo src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
   );
