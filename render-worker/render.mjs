@@ -68,16 +68,32 @@ async function optimizeStillImage(source, destination, width, height) {
   ]);
 }
 
-async function downloadAssets(signedAssets, timeline, settings) {
+function transitionFrames(type, fps, durationSeconds) {
+  const normal = Math.max(1, Math.round(durationSeconds * fps));
+  if (type === "hard-cut") return 1;
+  if (type === "whip-pan") return Math.max(1, Math.round(normal * 0.5));
+  return normal;
+}
+
+function assetsNeededForFrameRange(signedAssets, timeline, settings, frameRange) {
+  const urls = new Set([timeline?.voiceoverUrl, timeline?.musicUrl].filter(Boolean));
+  const [frameFrom, frameTo] = frameRange;
+  const fps = timeline?.fps || settings?.fps || 30;
+  let seriesFrame = settings?.showIntro ? Math.round(3 * fps) : 0;
+  for (const [index, scene] of (timeline?.scenes ?? []).entries()) {
+    const sceneEnd = seriesFrame + scene.durationFrames - 1;
+    if (seriesFrame <= frameTo && sceneEnd >= frameFrom) urls.add(scene?.media?.url);
+    if (index < timeline.scenes.length - 1) {
+      seriesFrame += scene.durationFrames - transitionFrames(scene.transitionOut, fps, settings?.transitionDuration ?? 0);
+    }
+  }
+  return Object.fromEntries(Object.entries(signedAssets).filter(([, url]) => urls.has(url)));
+}
+
+async function downloadAssets(signedAssets, timeline, width, height) {
   const localByKey = {};
   const kindByUrl = new Map();
   for (const scene of timeline?.scenes ?? []) kindByUrl.set(scene?.media?.url, scene?.media?.kind);
-  const longEdge = settings?.exportResolution === "4k" ? 3840 : settings?.exportResolution === "720p" ? 1280 : 1920;
-  const ratio = settings?.aspectRatio ?? "16:9";
-  const dimensions = ratio === "9:16" ? [Math.round(longEdge * 9 / 16), longEdge]
-    : ratio === "1:1" ? [longEdge, longEdge]
-    : ratio === "4:5" ? [Math.round(longEdge * 4 / 5), longEdge]
-    : [longEdge, Math.round(longEdge * 9 / 16)];
   await Promise.all(Object.entries(signedAssets).map(async ([key, url]) => {
     const filename = safeAssetName(key, url);
     const destination = path.join(ASSET_DIR, filename);
@@ -91,7 +107,7 @@ async function downloadAssets(signedAssets, timeline, settings) {
     }));
     if (kindByUrl.get(url) === "image") {
       const optimizedName = `${key.replace(/[^a-zA-Z0-9_-]/g, "_")}-render.jpg`;
-      await optimizeStillImage(destination, path.join(ASSET_DIR, optimizedName), dimensions[0], dimensions[1]);
+      await optimizeStillImage(destination, path.join(ASSET_DIR, optimizedName), width, height);
       fs.rmSync(destination);
       localByKey[key] = `worker-asset:render-assets/${optimizedName}`;
     } else {
@@ -144,9 +160,10 @@ async function main() {
   currentAttempt = claimed.attempt;
   const startedAt = Date.now();
   const timings = { claimMs: 0, assetsMs: 0, bundleMs: 0, metadataMs: 0, renderMs: 0, encodeMs: 0, uploadMs: 0 };
-  console.log(`Attempt ${claimed.attempt}/${MAX_ATTEMPTS}: caching ${Object.keys(claimed.signedAssets ?? {}).length} asset(s)`);
+  const neededAssets = assetsNeededForFrameRange(claimed.signedAssets ?? {}, claimed.timeline, claimed.settings, claimed.frameRange);
+  console.log(`Attempt ${claimed.attempt}/${MAX_ATTEMPTS}: caching ${Object.keys(neededAssets).length}/${Object.keys(claimed.signedAssets ?? {}).length} asset(s) used by this chunk`);
   const assetsStartedAt = Date.now();
-  const localByKey = await downloadAssets(claimed.signedAssets ?? {}, claimed.timeline, claimed.settings);
+  const localByKey = await downloadAssets(neededAssets, claimed.timeline, claimed.width, claimed.height);
   timings.assetsMs = Date.now() - assetsStartedAt;
   const localized = replaceAssetUrls(claimed, localByKey);
   const inputProps = { timeline: localized.timeline, settings: localized.settings };
