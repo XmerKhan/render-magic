@@ -1,14 +1,12 @@
 // @ts-nocheck
 /**
- * Runs once, after every render chunk (see render.mjs) has finished
- * successfully — GitHub Actions' `needs: render` guarantees that. Downloads
- * every chunk's MP4, concatenates them losslessly with ffmpeg (same codec,
- * resolution and fps in every chunk, so this is a stream copy, not a
- * re-encode) and uploads the final video.
- *
- * Deliberately dependency-free: this job doesn't need Remotion, Chromium, or
- * the app's node_modules at all, so it runs in a few seconds rather than
- * needing the full render-worker install.
+ * Runs once, after every render chunk has finished successfully. Downloads all
+ * chunks, keeps the already-rendered H.264 video bitstream, but re-encodes only
+ * the audio while stitching. Each chunk is independently muxed by Remotion, so
+ * a pure stream-copy concat can preserve AAC priming/timestamp discontinuities
+ * at chunk boundaries and cause audible gaps, stutter or drift. Re-encoding the
+ * audio track at stitch time is cheap compared with re-rendering video and
+ * produces one continuous audio timeline.
  */
 import { execFile } from "node:child_process";
 import fs from "node:fs";
@@ -17,7 +15,6 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
-
 const JOB_ID = process.env.JOB_ID;
 const JOB_TOKEN = process.env.JOB_TOKEN;
 const APP_URL = (process.env.APP_URL || "").replace(/\/+$/, "");
@@ -85,15 +82,16 @@ async function uploadFrom(url, source) {
 
 async function verifyVideo(file, expectedDuration = null) {
   const { stdout } = await run("ffprobe", [
-    "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,width,height,duration",
+    "-v", "error", "-show_entries", "format=duration:stream=index,codec_type,codec_name,width,height,duration",
     "-of", "json", file,
   ]);
-  const stream = JSON.parse(stdout).streams?.[0];
+  const parsed = JSON.parse(stdout);
+  const stream = parsed.streams?.find((item) => item.codec_type === "video");
   if (!stream || stream.codec_name !== "h264" || !stream.width || !stream.height) {
     throw new Error(`Video validation failed for ${path.basename(file)}`);
   }
-  if (expectedDuration && Number(stream.duration) < expectedDuration * 0.98) {
-    throw new Error(`Final video is incomplete (${stream.duration}s, expected about ${expectedDuration}s)`);
+  if (expectedDuration && Number(parsed.format?.duration) < expectedDuration * 0.98) {
+    throw new Error(`Final video is incomplete (${parsed.format?.duration}s, expected about ${expectedDuration}s)`);
   }
 }
 
@@ -108,17 +106,6 @@ async function main() {
     throw new Error("The render service returned an invalid expected duration");
   }
 
-  if (chunkUrls.length === 1) {
-    console.log("Single chunk — skipping ffmpeg concat, uploading it directly");
-    const chunkPath = path.join(WORKDIR, "chunk-0.mp4");
-    await downloadTo(chunkUrls[0], chunkPath);
-    await verifyVideo(chunkPath, expectedDuration);
-    await uploadFrom(outputUploadUrl, chunkPath);
-    await callApp({ action: "complete" });
-    console.log("Done");
-    return;
-  }
-
   const chunkPaths = [];
   for (let i = 0; i < chunkUrls.length; i += 1) {
     const dest = path.join(WORKDIR, `chunk-${i}.mp4`);
@@ -128,6 +115,15 @@ async function main() {
     chunkPaths.push(dest);
   }
 
+  if (chunkPaths.length === 1) {
+    console.log("Single chunk — validating and uploading directly");
+    await verifyVideo(chunkPaths[0], expectedDuration);
+    await uploadFrom(outputUploadUrl, chunkPaths[0]);
+    await callApp({ action: "complete" });
+    console.log("Done");
+    return;
+  }
+
   const listFile = path.join(WORKDIR, "concat.txt");
   fs.writeFileSync(
     listFile,
@@ -135,14 +131,19 @@ async function main() {
   );
 
   const outputFile = path.join(WORKDIR, "final.mp4");
-  console.log("Concatenating chunks with ffmpeg");
+  console.log("Concatenating chunks: copy H.264 video, re-encode audio for continuous timestamps");
   const { stderr } = await run("ffmpeg", [
     "-y",
     "-v", "warning",
     "-f", "concat",
     "-safe", "0",
     "-i", listFile,
-    "-c", "copy",
+    "-map", "0:v:0",
+    "-map", "0:a:0?",
+    "-c:v", "copy",
+    "-c:a", "aac",
+    "-b:a", "192k",
+    "-af", "aresample=async=1:first_pts=0",
     "-movflags", "+faststart",
     outputFile,
   ]);
@@ -154,7 +155,6 @@ async function main() {
   console.log(`Final video: ${(stats.size / 1024 / 1024).toFixed(1)}MB`);
 
   await uploadFrom(outputUploadUrl, outputFile);
-
   await callApp({ action: "complete" });
   console.log("Done");
 }
