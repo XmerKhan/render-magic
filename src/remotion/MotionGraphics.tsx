@@ -149,7 +149,6 @@ const DateStamp: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = 
         backgroundColor: 'rgba(0, 0, 0, 0.65)',
         padding: '0.6vh 1.5vh',
         borderRadius: '0.4vh',
-        backdropFilter: 'blur(8px)',
       }}
     >
       <Calendar size={isPortrait ? 18 : 14} color="#fbbf24" />

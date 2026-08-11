@@ -5,6 +5,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const JOB_ID = process.env.JOB_ID;
@@ -13,6 +15,7 @@ const APP_URL = (process.env.APP_URL || "").replace(/\/+$/, "");
 const CHUNK_INDEX = Number(process.env.CHUNK_INDEX);
 const CHUNK_COUNT = Number(process.env.CHUNK_COUNT);
 const MAX_ATTEMPTS = Math.max(1, Number(process.env.MAX_CHUNK_ATTEMPTS || 3));
+const run = promisify(execFile);
 
 if (!JOB_ID || !JOB_TOKEN || !APP_URL) throw new Error("JOB_ID, JOB_TOKEN and APP_URL are required");
 if (!Number.isInteger(CHUNK_INDEX) || !Number.isInteger(CHUNK_COUNT) || CHUNK_COUNT < 1) {
@@ -57,8 +60,24 @@ function safeAssetName(key, url) {
   return `${key.replace(/[^a-zA-Z0-9_-]/g, "_")}${extension}`;
 }
 
-async function downloadAssets(signedAssets) {
+async function optimizeStillImage(source, destination, width, height) {
+  await run("ffmpeg", [
+    "-y", "-v", "error", "-i", source,
+    "-vf", `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`,
+    "-frames:v", "1", "-q:v", "2", destination,
+  ]);
+}
+
+async function downloadAssets(signedAssets, timeline, settings) {
   const localByKey = {};
+  const kindByUrl = new Map();
+  for (const scene of timeline?.scenes ?? []) kindByUrl.set(scene?.media?.url, scene?.media?.kind);
+  const longEdge = settings?.exportResolution === "4k" ? 3840 : settings?.exportResolution === "720p" ? 1280 : 1920;
+  const ratio = settings?.aspectRatio ?? "16:9";
+  const dimensions = ratio === "9:16" ? [Math.round(longEdge * 9 / 16), longEdge]
+    : ratio === "1:1" ? [longEdge, longEdge]
+    : ratio === "4:5" ? [Math.round(longEdge * 4 / 5), longEdge]
+    : [longEdge, Math.round(longEdge * 9 / 16)];
   await Promise.all(Object.entries(signedAssets).map(async ([key, url]) => {
     const filename = safeAssetName(key, url);
     const destination = path.join(ASSET_DIR, filename);
@@ -70,7 +89,14 @@ async function downloadAssets(signedAssets) {
       close() { return new Promise((resolve) => file.end(resolve)); },
       abort(error) { file.destroy(error); },
     }));
-    localByKey[key] = `worker-asset:render-assets/${filename}`;
+    if (kindByUrl.get(url) === "image") {
+      const optimizedName = `${key.replace(/[^a-zA-Z0-9_-]/g, "_")}-render.jpg`;
+      await optimizeStillImage(destination, path.join(ASSET_DIR, optimizedName), dimensions[0], dimensions[1]);
+      fs.rmSync(destination);
+      localByKey[key] = `worker-asset:render-assets/${optimizedName}`;
+    } else {
+      localByKey[key] = `worker-asset:render-assets/${filename}`;
+    }
   }));
   return localByKey;
 }
@@ -116,12 +142,17 @@ async function main() {
   }
 
   currentAttempt = claimed.attempt;
+  const startedAt = Date.now();
+  const timings = { claimMs: 0, assetsMs: 0, bundleMs: 0, metadataMs: 0, renderMs: 0, encodeMs: 0, uploadMs: 0 };
   console.log(`Attempt ${claimed.attempt}/${MAX_ATTEMPTS}: caching ${Object.keys(claimed.signedAssets ?? {}).length} asset(s)`);
-  const localByKey = await downloadAssets(claimed.signedAssets ?? {});
+  const assetsStartedAt = Date.now();
+  const localByKey = await downloadAssets(claimed.signedAssets ?? {}, claimed.timeline, claimed.settings);
+  timings.assetsMs = Date.now() - assetsStartedAt;
   const localized = replaceAssetUrls(claimed, localByKey);
   const inputProps = { timeline: localized.timeline, settings: localized.settings };
 
   console.log("Bundling composition with local static assets");
+  const bundleStartedAt = Date.now();
   const serveUrl = await bundle({
     entryPoint: path.resolve(__dirname, "src/index.ts"),
     publicDir: PUBLIC_DIR,
@@ -130,10 +161,13 @@ async function main() {
       resolve: { ...config.resolve, alias: { ...(config.resolve?.alias ?? {}), "@": path.resolve(__dirname, "../src") } },
     }),
   });
+  timings.bundleMs = Date.now() - bundleStartedAt;
+  const metadataStartedAt = Date.now();
   const composition = await selectComposition({ serveUrl, id: "main", inputProps, timeoutInMilliseconds: 220000 });
+  timings.metadataMs = Date.now() - metadataStartedAt;
   const [frameFrom, frameTo] = claimed.frameRange;
   const concurrency = chooseConcurrency();
-  const offthreadVideoThreads = 2;
+  const offthreadVideoThreads = 1;
   // Keep a larger OffthreadVideo frame cache so long source videos do not
   // repeatedly evict decoded frames and fall back to expensive FFmpeg seeks.
   // 4GB is safe on the 16GB GitHub runner while leaving headroom for Chromium.
@@ -145,9 +179,18 @@ async function main() {
   let progress = 0;
   let renderedFrames = 0;
   let lastReport = 0;
+  let lastLogAt = Date.now();
+  let lastLoggedFrames = 0;
+  let muxingStartedAt = 0;
+  const renderStartedAt = Date.now();
   const heartbeat = setInterval(() => {
     const resources = resourceSnapshot();
-    console.log(`Heartbeat: ${progress}% (${renderedFrames} frames), CPU ${resources.cpuPercent}%, RAM ${resources.memoryMb}MB`);
+    const now = Date.now();
+    const intervalFps = (renderedFrames - lastLoggedFrames) / Math.max(0.001, (now - lastLogAt) / 1000);
+    const averageFps = renderedFrames / Math.max(0.001, (now - renderStartedAt) / 1000);
+    console.log(`PERF phase=render progress=${progress}% frames=${renderedFrames} interval_fps=${intervalFps.toFixed(2)} average_fps=${averageFps.toFixed(2)} cpu=${resources.cpuPercent}% ram_mb=${resources.memoryMb}`);
+    lastLogAt = now;
+    lastLoggedFrames = renderedFrames;
     void callApp({ action: "heartbeat", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT, progress, renderedFrames, ...resources }, { retries: 1 })
       .catch((error) => console.warn(`Heartbeat failed: ${error.message}`));
   }, 20_000);
@@ -164,16 +207,16 @@ async function main() {
       x264Preset: "veryfast",
       frameRange: [frameFrom, frameTo],
       chromiumOptions: {
-        gl: "swangle",
         enableMultiProcessOnLinux: true,
       },
       timeoutInMilliseconds: 220000,
       offthreadVideoCacheSizeInBytes,
       offthreadVideoThreads,
-      logLevel: "verbose",
+      logLevel: "info",
       onProgress: (state) => {
         progress = Math.round(state.progress * 100);
         renderedFrames = state.renderedFrames;
+        if (state.stitchStage === "muxing" && !muxingStartedAt) muxingStartedAt = Date.now();
         if (progress - lastReport < 2) return;
         lastReport = progress;
         void callApp({
@@ -190,10 +233,18 @@ async function main() {
   } finally {
     clearInterval(heartbeat);
   }
+  const renderFinishedAt = Date.now();
+  timings.renderMs = (muxingStartedAt || renderFinishedAt) - renderStartedAt;
+  timings.encodeMs = muxingStartedAt ? renderFinishedAt - muxingStartedAt : 0;
 
   if (!fs.statSync(OUTPUT_FILE).size) throw new Error("Remotion produced an empty chunk");
+  const uploadStartedAt = Date.now();
   await uploadFile(claimed.outputUploadUrl, OUTPUT_FILE);
+  timings.uploadMs = Date.now() - uploadStartedAt;
   await callApp({ action: "complete-chunk", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT });
+  const elapsedSeconds = (Date.now() - startedAt) / 1000;
+  const frameCount = frameTo - frameFrom + 1;
+  console.log(`PERF_SUMMARY ${JSON.stringify({ chunk: CHUNK_INDEX, frames: frameCount, fps: Number((frameCount / elapsedSeconds).toFixed(2)), elapsedSeconds: Number(elapsedSeconds.toFixed(2)), peakPhase: "complete", timings })}`);
   console.log(`Chunk ${CHUNK_INDEX + 1}/${CHUNK_COUNT} checkpointed successfully`);
 }
 
