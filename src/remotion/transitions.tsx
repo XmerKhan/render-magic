@@ -4,8 +4,6 @@ import { slide } from '@remotion/transitions/slide';
 import { wipe } from '@remotion/transitions/wipe';
 import { clockWipe } from '@remotion/transitions/clock-wipe';
 import { iris } from '@remotion/transitions/iris';
-import { linearBlur } from '@remotion/transitions/linear-blur';
-import { zoomBlur } from '@remotion/transitions/zoom-blur';
 import { pushCut } from '@remotion/transitions/push-cut';
 import { dissolve } from '@remotion/transitions/dissolve';
 import { linearTiming } from '@remotion/transitions';
@@ -29,6 +27,28 @@ const flashWhite = (): TransitionPresentation<Record<string, never>> => ({
         <AbsoluteFill
           style={{ backgroundColor: 'white', opacity: flash, pointerEvents: 'none' }}
         />
+      </AbsoluteFill>
+    );
+  },
+  props: {},
+});
+
+/**
+ * CPU-safe zoom transition. Remotion's zoomBlur/linearBlur presentations apply
+ * a full-frame CSS blur on every 1080p frame. Headless runners software-render
+ * that filter, which made a 450-frame chunk take tens of minutes. Scale and
+ * opacity retain the visual motion while staying on Chromium's compositor.
+ */
+const fastZoom = (): TransitionPresentation<Record<string, never>> => ({
+  component: ({ children, presentationProgress, presentationDirection }) => {
+    const entering = presentationDirection === 'entering';
+    const opacity = entering ? presentationProgress : 1 - presentationProgress;
+    const scale = entering
+      ? 1.08 - presentationProgress * 0.08
+      : 1 + presentationProgress * 0.08;
+    return (
+      <AbsoluteFill style={{ opacity, transform: `scale(${scale})` }}>
+        {children}
       </AbsoluteFill>
     );
   },
@@ -66,7 +86,7 @@ export function getTransition(
         }),
       };
     case 'zoom-blur':
-      return { presentation: zoomBlur({}), timing };
+      return { presentation: fastZoom(), timing };
     case 'hard-cut':
       // A hard cut is an instant change, not a short crossfade.
       return { presentation: fade({}), timing: linearTiming({ durationInFrames: 1 }) };
@@ -98,7 +118,7 @@ export function getTransition(
     case 'push-down':
       return { presentation: slide({ direction: 'from-bottom' }), timing };
     case 'blur-dissolve':
-      return { presentation: linearBlur({}), timing };
+      return { presentation: fade({}), timing };
     case 'star-wipe':
       return { presentation: wipe({ direction: 'from-top-left' }), timing };
     case 'clock-wipe':

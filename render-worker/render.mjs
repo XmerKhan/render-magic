@@ -119,7 +119,10 @@ async function downloadAssets(signedAssets, timeline, width, height) {
 
 function replaceAssetUrls(value, localByKey) {
   const signedToLocal = new Map();
-  for (const [key, signedUrl] of Object.entries(value.signedAssets ?? {})) signedToLocal.set(signedUrl, localByKey[key]);
+  for (const [key, signedUrl] of Object.entries(value.signedAssets ?? {})) {
+    const localUrl = localByKey[key];
+    if (localUrl) signedToLocal.set(signedUrl, localUrl);
+  }
   return JSON.parse(JSON.stringify(value), (_key, item) => typeof item === "string" && signedToLocal.has(item) ? signedToLocal.get(item) : item);
 }
 
