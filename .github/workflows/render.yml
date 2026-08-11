@@ -91,6 +91,7 @@ jobs:
           CHUNK_INDEX: ${{ matrix.chunk_index }}
           CHUNK_COUNT: ${{ inputs.chunk_count }}
           MAX_CHUNK_ATTEMPTS: 3
+          RENDER_CONCURRENCY: 4
         run: |
           for attempt in 1 2 3; do
             echo "Chunk attempt $attempt/3"
