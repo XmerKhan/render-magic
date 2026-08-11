@@ -47,7 +47,7 @@ export const SceneComponent: React.FC<{ scene: TimelineScene; settings: EditSett
   const media = scene.media.kind === "image" ? (
     scene.kenBurns.enabled ? <KenBurnsImage scene={scene} /> : <Img src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
   ) : (
-    <OffthreadVideo src={mediaUrl} style={{ width: "100%", height: "100%" }} muted />
+    <OffthreadVideo src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
   );
 
   return (
