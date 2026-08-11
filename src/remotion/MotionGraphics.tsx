@@ -1,4 +1,4 @@
-import { useCurrentFrame, useVideoConfig, interpolate, spring, Sequence } from 'remotion';
+import { useCurrentFrame, useVideoConfig, interpolate, Sequence } from 'remotion';
 import type { TimelineScene, EditSettings, AspectRatio } from '@/types';
 import { MapPin, Calendar } from 'lucide-react';
 
@@ -13,7 +13,6 @@ const FONT_STACKS: Record<string, string> = {
   system: 'system-ui, sans-serif',
 };
 
-// Lower-Third: name + role sliding in from left
 const LowerThird: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = ({ scene, aspectRatio }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -30,26 +29,8 @@ const LowerThird: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> =
   const roleSize = isPortrait ? '2.2vh' : '1.8vh';
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: '6%',
-        bottom,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        opacity,
-        transform: `translateX(${slideX}%)`,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: 'rgba(251, 191, 36, 0.95)',
-          padding: '0.8vh 2vh',
-          borderRadius: '0.4vh',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-        }}
-      >
+    <div style={{ position: 'absolute', left: '6%', bottom, display: 'flex', flexDirection: 'column', gap: 4, opacity, transform: `translateX(${slideX}%)` }}>
+      <div style={{ backgroundColor: 'rgba(251, 191, 36, 0.95)', padding: '0.8vh 2vh', borderRadius: '0.4vh', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
         <p style={{ margin: 0, fontFamily: FONT_STACKS.inter, fontWeight: 700, fontSize, color: '#18181b', lineHeight: 1.2 }}>
           {scene.lowerThird.name}
         </p>
@@ -63,7 +44,6 @@ const LowerThird: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> =
   );
 };
 
-// Text Callout: bold emphasized text animating onto screen
 const TextCallout: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = ({ scene, aspectRatio }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -75,44 +55,15 @@ const TextCallout: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> 
 
   const scale = interpolate(enterProgress, [0, 1], [0.6, 1], { extrapolateRight: 'clamp' });
   const opacity = Math.min(enterProgress, 1 - exitProgress);
-  const eased = easeOutCubic(enterProgress);
 
   const isPortrait = aspectRatio === '9:16' || aspectRatio === '4:5';
   const top = isPortrait ? '35%' : '25%';
   const fontSize = isPortrait ? '7vh' : '6vh';
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top,
-        left: '50%',
-        transform: `translateX(-50%) scale(${scale})`,
-        opacity,
-        textAlign: 'center',
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          padding: '1.5vh 3vh',
-          borderRadius: '0.6vh',
-          border: '2px solid rgba(251, 191, 36, 0.6)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-        }}
-      >
-        <p
-          style={{
-            margin: 0,
-            fontFamily: FONT_STACKS.inter,
-            fontWeight: 800,
-            fontSize,
-            color: '#fbbf24',
-            lineHeight: 1.1,
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-          }}
-        >
+    <div style={{ position: 'absolute', top, left: '50%', transform: `translateX(-50%) scale(${scale})`, opacity, textAlign: 'center' }}>
+      <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', padding: '1.5vh 3vh', borderRadius: '0.6vh', border: '2px solid rgba(251, 191, 36, 0.6)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+        <p style={{ margin: 0, fontFamily: FONT_STACKS.inter, fontWeight: 800, fontSize, color: '#fbbf24', lineHeight: 1.1, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           {scene.callout}
         </p>
       </div>
@@ -120,7 +71,6 @@ const TextCallout: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> 
   );
 };
 
-// Date Stamp: animated date card
 const DateStamp: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = ({ scene, aspectRatio }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -136,21 +86,7 @@ const DateStamp: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = 
   const fontSize = isPortrait ? '2.5vh' : '2vh';
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top,
-        left: '50%',
-        transform: `translateX(-50%) translateY(${translateY}px)`,
-        opacity,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.8vh',
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        padding: '0.6vh 1.5vh',
-        borderRadius: '0.4vh',
-      }}
-    >
+    <div style={{ position: 'absolute', top, left: '50%', transform: `translateX(-50%) translateY(${translateY}px)`, opacity, display: 'flex', alignItems: 'center', gap: '0.8vh', backgroundColor: 'rgba(0, 0, 0, 0.65)', padding: '0.6vh 1.5vh', borderRadius: '0.4vh' }}>
       <Calendar size={isPortrait ? 18 : 14} color="#fbbf24" />
       <p style={{ margin: 0, fontFamily: FONT_STACKS.inter, fontWeight: 600, fontSize, color: '#f4f4f5', letterSpacing: '0.08em' }}>
         {scene.date}
@@ -159,14 +95,12 @@ const DateStamp: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = 
   );
 };
 
-// Location Pin: animated map marker
 const LocationPin: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = ({ scene, aspectRatio }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   if (!scene.location) return null;
 
   const enterProgress = Math.min(1, frame / (fps * 0.4));
-  const bounce = spring({ frame: frame - fps * 0.4, fps, config: { damping: 8, stiffness: 100 } });
   const opacity = enterProgress;
 
   const isPortrait = aspectRatio === '9:16' || aspectRatio === '4:5';
@@ -174,21 +108,7 @@ const LocationPin: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> 
   const fontSize = isPortrait ? '2.2vh' : '1.8vh';
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top,
-        left: '50%',
-        transform: `translateX(-50%) translateY(${bounce * 0}px)`,
-        opacity,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.6vh',
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        padding: '0.5vh 1.2vh',
-        borderRadius: '0.4vh',
-      }}
-    >
+    <div style={{ position: 'absolute', top, left: '50%', transform: 'translateX(-50%)', opacity, display: 'flex', alignItems: 'center', gap: '0.6vh', backgroundColor: 'rgba(0, 0, 0, 0.6)', padding: '0.5vh 1.2vh', borderRadius: '0.4vh' }}>
       <MapPin size={isPortrait ? 16 : 14} color="#4ade80" />
       <p style={{ margin: 0, fontFamily: FONT_STACKS.inter, fontWeight: 500, fontSize, color: '#d4d4d8' }}>
         {scene.location}
@@ -197,7 +117,6 @@ const LocationPin: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> 
   );
 };
 
-// Quote Card: full-screen styled quote
 const QuoteCard: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = ({ scene, aspectRatio }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -215,47 +134,13 @@ const QuoteCard: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = 
   const maxWidth = isPortrait ? '80%' : '60%';
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity,
-        transform: `translateY(${translateY}px)`,
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        }}
-      />
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity, transform: `translateY(${translateY}px)` }}>
+      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)' }} />
       <div style={{ position: 'relative', maxWidth, textAlign: 'center', padding: '0 4vh' }}>
-        <p
-          style={{
-            margin: 0,
-            fontFamily: FONT_STACKS.georgia,
-            fontWeight: 400,
-            fontSize,
-            color: '#f4f4f5',
-            lineHeight: 1.4,
-            fontStyle: 'italic',
-          }}
-        >
+        <p style={{ margin: 0, fontFamily: FONT_STACKS.georgia, fontWeight: 400, fontSize, color: '#f4f4f5', lineHeight: 1.4, fontStyle: 'italic' }}>
           &ldquo;{scene.quote}&rdquo;
         </p>
-        <div
-          style={{
-            marginTop: '2vh',
-            height: 2,
-            width: '40%',
-            margin: '2vh auto 0',
-            background: 'linear-gradient(90deg, transparent, #fbbf24, transparent)',
-          }}
-        />
+        <div style={{ margin: '2vh auto 0', height: 2, width: '40%', background: 'linear-gradient(90deg, transparent, #fbbf24, transparent)' }} />
       </div>
     </div>
   );
@@ -264,16 +149,12 @@ const QuoteCard: React.FC<{ scene: TimelineScene; aspectRatio: AspectRatio }> = 
 export const MotionGraphics: React.FC<{
   scene: TimelineScene;
   settings: EditSettings;
-}> = ({ scene, settings }) => {
-  return (
-    <>
-      <Sequence from={0} durationInFrames={scene.durationFrames}>
-        <LowerThird scene={scene} aspectRatio={settings.aspectRatio} />
-        <TextCallout scene={scene} aspectRatio={settings.aspectRatio} />
-        <DateStamp scene={scene} aspectRatio={settings.aspectRatio} />
-        <LocationPin scene={scene} aspectRatio={settings.aspectRatio} />
-        <QuoteCard scene={scene} aspectRatio={settings.aspectRatio} />
-      </Sequence>
-    </>
-  );
-};
+}> = ({ scene, settings }) => (
+  <Sequence from={0} durationInFrames={scene.durationFrames}>
+    <LowerThird scene={scene} aspectRatio={settings.aspectRatio} />
+    <TextCallout scene={scene} aspectRatio={settings.aspectRatio} />
+    <DateStamp scene={scene} aspectRatio={settings.aspectRatio} />
+    <LocationPin scene={scene} aspectRatio={settings.aspectRatio} />
+    <QuoteCard scene={scene} aspectRatio={settings.aspectRatio} />
+  </Sequence>
+);
