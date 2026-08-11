@@ -33,10 +33,10 @@ jobs:
   render:
     needs: prepare
     runs-on: ubuntu-latest
-    # A 15-second 1080p chunk can exceed 30 minutes on a CPU-only runner.
-    # This is a safety ceiling, not a performance mechanism. Chunks remain
-    # independently checkpointed and retried.
-    timeout-minutes: 90
+    # Long 1080p CPU renders can take well over 90 minutes on GitHub-hosted
+    # runners. Chunks remain independently checkpointed and retried, so this
+    # only prevents a slow chunk from being killed before it can finish.
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -53,7 +53,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+            libnss3 libatk1.0-0 libatk-bridge.2.0-0 libcups2 libdrm2 \
             libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
             libgbm1 libpango-1.0-0 libcairo2 libasound2t64 ffmpeg
 
