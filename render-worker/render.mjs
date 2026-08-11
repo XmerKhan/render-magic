@@ -66,6 +66,42 @@ function resolveWorkerAssetUrl(url) {
   return `${APP_URL}/${relativePath}`;
 }
 
+function localPublicUrlFromWorkerAsset(url) {
+  if (!url.startsWith("worker-asset:")) return url;
+  const relativePath = url.slice("worker-asset:".length).replace(/^\/+/, "");
+  return `/${relativePath}`;
+}
+
+async function downloadUrlToFile(url, destination) {
+  const response = await fetch(url);
+  if (!response.ok || !response.body) throw new Error(`Asset download failed [${response.status}]: ${url}`);
+  const file = fs.createWriteStream(destination);
+  await response.body.pipeTo(new WritableStream({
+    write(chunk) { return new Promise((resolve, reject) => file.write(Buffer.from(chunk), (error) => error ? reject(error) : resolve())); },
+    close() { return new Promise((resolve) => file.end(resolve)); },
+    abort(error) { file.destroy(error); },
+  }));
+}
+
+async function downloadWorkerMarkedAssets(timeline) {
+  const urls = new Set([
+    timeline?.voiceoverUrl,
+    timeline?.musicUrl,
+    ...(timeline?.scenes ?? []).map((scene) => scene?.media?.url),
+  ].filter((value) => typeof value === "string" && value.startsWith("worker-asset:")));
+
+  const replacements = new Map();
+  for (const marker of urls) {
+    const publicUrl = localPublicUrlFromWorkerAsset(marker);
+    const relative = publicUrl.replace(/^\//, "");
+    const destination = path.join(PUBLIC_DIR, relative);
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    if (!fs.existsSync(destination)) await downloadUrlToFile(resolveWorkerAssetUrl(marker), destination);
+    replacements.set(marker, publicUrl);
+  }
+  return replacements;
+}
+
 async function optimizeStillImage(source, destination, width, height) {
   await run("ffmpeg", [
     "-y", "-v", "error", "-i", source,
@@ -102,10 +138,6 @@ async function downloadAssets(signedAssets, timeline, width, height) {
   for (const scene of timeline?.scenes ?? []) kindByUrl.set(scene?.media?.url, scene?.media?.kind);
 
   await Promise.all(Object.entries(signedAssets).map(async ([key, sourceUrl]) => {
-    // The app can persist a local worker asset marker in the render payload.
-    // Remotion cannot download a custom `worker-asset:` URL directly. Resolve
-    // it back to the app's public asset URL before downloading it into this
-    // worker's isolated public directory.
     const url = resolveWorkerAssetUrl(sourceUrl);
     if (!/^https?:\/\//i.test(url)) {
       throw new Error(`Invalid render asset URL for ${key}: ${sourceUrl}`);
@@ -113,14 +145,7 @@ async function downloadAssets(signedAssets, timeline, width, height) {
 
     const filename = safeAssetName(key, url);
     const destination = path.join(ASSET_DIR, filename);
-    const response = await fetch(url);
-    if (!response.ok || !response.body) throw new Error(`Asset download failed for ${key} [${response.status}]`);
-    const file = fs.createWriteStream(destination);
-    await response.body.pipeTo(new WritableStream({
-      write(chunk) { return new Promise((resolve, reject) => file.write(Buffer.from(chunk), (error) => error ? reject(error) : resolve())); },
-      close() { return new Promise((resolve) => file.end(resolve)); },
-      abort(error) { file.destroy(error); },
-    }));
+    await downloadUrlToFile(url, destination);
     if (kindByUrl.get(sourceUrl) === "image" || kindByUrl.get(url) === "image") {
       const optimizedName = `${key.replace(/[^a-zA-Z0-9_-]/g, "_")}-render.jpg`;
       await optimizeStillImage(destination, path.join(ASSET_DIR, optimizedName), width, height);
@@ -133,13 +158,18 @@ async function downloadAssets(signedAssets, timeline, width, height) {
   return localByKey;
 }
 
-function replaceAssetUrls(value, localByKey) {
+function replaceAssetUrls(value, localByKey, workerAssetReplacements = new Map()) {
   const signedToLocal = new Map();
   for (const [key, signedUrl] of Object.entries(value.signedAssets ?? {})) {
     const localUrl = localByKey[key];
     if (localUrl) signedToLocal.set(signedUrl, localUrl);
   }
-  return JSON.parse(JSON.stringify(value), (_key, item) => typeof item === "string" && signedToLocal.has(item) ? signedToLocal.get(item) : item);
+  return JSON.parse(JSON.stringify(value), (_key, item) => {
+    if (typeof item !== "string") return item;
+    if (signedToLocal.has(item)) return signedToLocal.get(item);
+    if (workerAssetReplacements.has(item)) return workerAssetReplacements.get(item);
+    return item;
+  });
 }
 
 function chooseConcurrency() {
@@ -180,8 +210,9 @@ async function main() {
   console.log(`Attempt ${claimed.attempt}/${MAX_ATTEMPTS}: caching ${Object.keys(neededAssets).length}/${Object.keys(claimed.signedAssets ?? {}).length} asset(s) used by this chunk`);
   const assetsStartedAt = Date.now();
   const localByKey = await downloadAssets(neededAssets, claimed.timeline, claimed.width, claimed.height);
+  const workerAssetReplacements = await downloadWorkerMarkedAssets(claimed.timeline);
   timings.assetsMs = Date.now() - assetsStartedAt;
-  const localized = replaceAssetUrls(claimed, localByKey);
+  const localized = replaceAssetUrls(claimed, localByKey, workerAssetReplacements);
   const inputProps = { timeline: localized.timeline, settings: localized.settings };
 
   console.log("Bundling composition with local static assets");
@@ -236,9 +267,7 @@ async function main() {
       crf: 18,
       x264Preset: "veryfast",
       frameRange: [frameFrom, frameTo],
-      chromiumOptions: {
-        enableMultiProcessOnLinux: true,
-      },
+      chromiumOptions: { enableMultiProcessOnLinux: true },
       timeoutInMilliseconds: 220000,
       offthreadVideoCacheSizeInBytes,
       offthreadVideoThreads,
@@ -263,10 +292,10 @@ async function main() {
   } finally {
     clearInterval(heartbeat);
   }
+
   const renderFinishedAt = Date.now();
   timings.renderMs = (muxingStartedAt || renderFinishedAt) - renderStartedAt;
   timings.encodeMs = muxingStartedAt ? renderFinishedAt - muxingStartedAt : 0;
-
   if (!fs.statSync(OUTPUT_FILE).size) throw new Error("Remotion produced an empty chunk");
   const uploadStartedAt = Date.now();
   await uploadFile(claimed.outputUploadUrl, OUTPUT_FILE);
@@ -274,15 +303,14 @@ async function main() {
   await callApp({ action: "complete-chunk", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT });
   const elapsedSeconds = (Date.now() - startedAt) / 1000;
   const frameCount = frameTo - frameFrom + 1;
-  console.log(`PERF_SUMMARY ${JSON.stringify({ chunk: CHUNK_INDEX, frames: frameCount, fps: Number((frameCount / elapsedSeconds).toFixed(2)), elapsedSeconds: Number(elapsedSeconds.toFixed(2)), peakPhase: "complete", timings })}`);
+  console.log(`PERF_SUMMARY ${JSON.stringify({ chunk: CHUNK_INDEX, frames: frameCount, fps: Number((frameCount / elapsedSeconds).toFixed(2)), elapsedSeconds: Number(elapsedSeconds.toFixed(2)), timings })}`);
   console.log(`Chunk ${CHUNK_INDEX + 1}/${CHUNK_COUNT} checkpointed successfully`);
 }
 
 main().catch(async (error) => {
   console.error(error);
   try {
-    const checkpoint = await callApp({ action: "chunk-fail", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT, error: String(error?.message ?? error).slice(0, 2000), final: currentAttempt >= MAX_ATTEMPTS });
-    void checkpoint;
+    await callApp({ action: "chunk-fail", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT, error: String(error?.message ?? error).slice(0, 2000), final: currentAttempt >= MAX_ATTEMPTS });
   } catch (reportError) {
     console.error(`Could not report chunk failure: ${reportError.message}`);
   }
