@@ -123,11 +123,14 @@ function assetsNeededForFrameRange(signedAssets, timeline, settings, frameRange)
   const fps = timeline?.fps || settings?.fps || 30;
   let seriesFrame = settings?.showIntro ? Math.round(3 * fps) : 0;
   for (const [index, scene] of (timeline?.scenes ?? []).entries()) {
-    const sceneEnd = seriesFrame + scene.durationFrames - 1;
+    const holdFrames = index < timeline.scenes.length - 1
+      ? transitionFrames(scene.transitionOut, fps, settings?.transitionDuration ?? 0)
+      : 0;
+    // VideoComposition preserves the original scene start time and extends the
+    // outgoing scene with a frozen tail during the transition overlap.
+    const sceneEnd = seriesFrame + scene.durationFrames + holdFrames - 1;
     if (seriesFrame <= frameTo && sceneEnd >= frameFrom) urls.add(scene?.media?.url);
-    if (index < timeline.scenes.length - 1) {
-      seriesFrame += scene.durationFrames - transitionFrames(scene.transitionOut, fps, settings?.transitionDuration ?? 0);
-    }
+    seriesFrame += scene.durationFrames;
   }
   return Object.fromEntries(Object.entries(signedAssets).filter(([, url]) => urls.has(url)));
 }
