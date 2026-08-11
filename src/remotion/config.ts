@@ -1,5 +1,4 @@
 import type { TimelineData, EditSettings, AspectRatio } from "@/types";
-import { totalTransitionShrinkFrames } from "./transitions";
 
 export const RESOLUTIONS: Record<string, { width: number; height: number }> = {
   "720p": { width: 1280, height: 720 },
@@ -39,12 +38,13 @@ export function getCompositionConfig(timeline: TimelineData, settings: EditSetti
   const fps = timeline.fps;
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
-  const shrink = totalTransitionShrinkFrames(timeline.scenes, fps, settings.transitionDuration);
-  const scenesFrames = Math.max(0, timeline.totalFrames - shrink);
+
+  // Do not subtract transition overlap here. VideoComposition compensates for
+  // TransitionSeries overlap by freezing the outgoing scene during its
+  // transition tail, preserving the original scene/script timeline.
+  const scenesFrames = Math.max(0, timeline.totalFrames);
   const durationInFrames = scenesFrames + introFrames + outroFrames;
 
-  // The aspect-ratio table is authored at a 1920 long edge; scale it so the
-  // exportResolution setting actually changes the output size.
   const longEdge = RESOLUTION_LONG_EDGE[settings.exportResolution] ?? 1920;
   const scale = longEdge / Math.max(ar.width, ar.height);
 
