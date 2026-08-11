@@ -22,10 +22,6 @@ const Vignette: React.FC<{ intensity: number }> = memo(({ intensity }) => {
   );
 });
 
-// Keep film grain as a static, precomputed texture. SVG feTurbulence is a
-// procedural filter and can be rasterized repeatedly by headless Chromium,
-// which is disproportionately expensive at 1920x1080. A tiled set of static
-// dots gives a similar texture while allowing Chromium to cache the image.
 const FILM_GRAIN_RECTS = Array.from({ length: 180 }, (_, i) => {
   const x = (i * 37) % 200;
   const y = (i * 83) % 200;
@@ -62,9 +58,24 @@ export const SceneComponent: React.FC<{ scene: TimelineScene; settings: EditSett
     <OffthreadVideo src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
   );
 
+  // A tiny overscan prevents sub-pixel transform/transition edges from exposing
+  // the black scene background. It is intentionally small enough to be invisible
+  // in normal framing while eliminating the thick black seams seen during slides
+  // and zoom transitions.
+  const mediaLayerStyle: React.CSSProperties = {
+    position: "absolute",
+    inset: "-1%",
+    width: "102%",
+    height: "102%",
+  };
+
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", backgroundColor: "#000" }}>
-      {hasColorGrade ? <div style={{ position: "absolute", inset: 0, filter: filterStr }}>{media}</div> : <div style={{ position: "absolute", inset: 0 }}>{media}</div>}
+      {hasColorGrade ? (
+        <div style={{ ...mediaLayerStyle, filter: filterStr }}>{media}</div>
+      ) : (
+        <div style={mediaLayerStyle}>{media}</div>
+      )}
       <Vignette intensity={vignette} />
       <FilmGrain amount={manual.filmGrain} />
       <Caption scene={scene} settings={settings} />
