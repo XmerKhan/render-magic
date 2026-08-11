@@ -231,7 +231,7 @@ async function main() {
   timings.metadataMs = Date.now() - metadataStartedAt;
   const [frameFrom, frameTo] = claimed.frameRange;
   const concurrency = chooseConcurrency();
-  const offthreadVideoThreads = 1;
+  const offthreadVideoThreads = 2;
   const offthreadVideoCacheSizeInBytes = 4 * 1024 ** 3;
 
   console.log(`Rendering ${composition.width}x${composition.height} @ ${composition.fps}fps, frames ${frameFrom}-${frameTo}`);
@@ -308,11 +308,11 @@ async function main() {
 }
 
 main().catch(async (error) => {
-  console.error(error);
+  console.error(error?.stack || error);
   try {
-    await callApp({ action: "chunk-fail", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT, error: String(error?.message ?? error).slice(0, 2000), final: currentAttempt >= MAX_ATTEMPTS });
+    await callApp({ action: "fail-chunk", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT, attempt: currentAttempt, error: error?.message || String(error) }, { retries: 1 });
   } catch (reportError) {
-    console.error(`Could not report chunk failure: ${reportError.message}`);
+    console.error(`Failed to report chunk error: ${reportError.message}`);
   }
   process.exit(1);
 });
