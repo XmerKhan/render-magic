@@ -21,7 +21,7 @@ on:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       chunks: ${{ steps.set.outputs.chunks }}
     steps:
@@ -32,7 +32,7 @@ jobs:
 
   render:
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # GitHub-hosted jobs can run for up to 6 hours. Keep a slow chunk alive
     # for up to 5 hours while completed chunks remain checkpointed independently.
     timeout-minutes: 300
@@ -42,9 +42,9 @@ jobs:
       matrix:
         chunk_index: ${{ fromJson(needs.prepare.outputs.chunks) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -97,12 +97,12 @@ jobs:
 
   stitch:
     needs: render
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
