@@ -58,24 +58,12 @@ jobs:
             libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
             libgbm1 libpango-1.0-0 libcairo2 libasound2t64 ffmpeg
 
-      - name: Cache worker node_modules
-        uses: actions/cache@v4
-        with:
-          path: render-worker/node_modules
-          key: worker-node-modules-${{ hashFiles('render-worker/package-lock.json', 'render-worker/package.json') }}
-
       - name: Install worker dependencies
         working-directory: render-worker
         run: npm ci --no-audit --no-fund
 
-      - name: Cache app node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: app-node-modules-${{ hashFiles('package-lock.json', 'package.json') }}
-
       - name: Install app dependencies (for composition module resolution)
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Cache Chrome Headless Shell
         uses: actions/cache@v4
