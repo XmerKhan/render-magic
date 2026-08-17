@@ -1,7 +1,7 @@
 import { Freeze, Sequence, useVideoConfig, useCurrentFrame, interpolate, staticFile, AbsoluteFill } from "remotion";
 import { Audio } from "@remotion/media";
-import { TransitionSeries } from "@remotion/transitions";
 import type { TimelineData, EditSettings } from "@/types";
+import { TransitionSeries } from "@remotion/transitions";
 import { SceneComponent } from "./SceneComponent";
 import { IntroOutro } from "./IntroOutro";
 import { getTransition } from "./transitions";
@@ -14,6 +14,18 @@ function resolveAudioSource(url?: string | null) {
   return url;
 }
 
+function getAuthoritativeSceneFrames(timeline: TimelineData, fps: number) {
+  const sceneEnd = timeline.scenes.reduce(
+    (max, scene) => Math.max(max, Number(scene.endFrame) || 0),
+    0,
+  );
+  const voiceoverEnd = Math.max(
+    0,
+    Math.round((Number(timeline.voiceoverDurationSec) || 0) * fps),
+  );
+  return Math.max(0, sceneEnd, voiceoverEnd, Number(timeline.totalFrames) || 0);
+}
+
 export const VideoComposition: React.FC<{
   timeline: TimelineData;
   settings: EditSettings;
@@ -23,10 +35,9 @@ export const VideoComposition: React.FC<{
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
 
-  // timeline.totalFrames is based on the absolute script timestamps and is also
-  // extended to the real voiceover duration. This prevents the renderer from
-  // cutting off the final spoken words when the last scene timestamp is short.
-  const scenesFrames = Math.max(0, timeline.totalFrames);
+  // Never trust a cached/truncated totalFrames value. The composition duration
+  // and the visual sequence must cover the same authoritative endpoint.
+  const scenesFrames = getAuthoritativeSceneFrames(timeline, fps);
 
   const voiceoverFrames = Math.max(
     0,
@@ -94,7 +105,6 @@ export const VideoComposition: React.FC<{
 
       <Sequence from={introFrames} durationInFrames={scenesFrames}>
         <TransitionSeries>
-          {/* Preserve any intentional silence before the first timestamp. */}
           {timeline.scenes.length > 0 && timeline.scenes[0]!.startFrame > 0 && (
             <TransitionSeries.Sequence
               durationInFrames={timeline.scenes[0]!.startFrame}
@@ -126,10 +136,6 @@ export const VideoComposition: React.FC<{
                   transitionMaxFrames,
                 ).timing.getDurationInFrames({ fps });
 
-            // TransitionSeries subtracts transition duration from the overall
-            // sequence. Adding the transition hold back onto the outgoing scene
-            // therefore preserves the exact absolute timestamp. The natural gap
-            // is frozen on the outgoing frame before the transition begins.
             const frozenTailFrames = naturalGapFrames + transitionHoldFrames;
             const sequenceDuration = scene.durationFrames + frozenTailFrames;
 
