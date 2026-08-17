@@ -90,9 +90,6 @@ export function PreviewPlayer({ timeline, settings, onFrameUpdate, playerRef }: 
   const totalFrames = config?.durationInFrames ?? 0;
   const fps = timeline?.fps ?? settings.fps;
 
-  // Compute preview dimensions that fit within the available space
-  // while preserving the aspect ratio. The box itself changes shape
-  // when the aspect ratio setting changes.
   const maxW = 720;
   const maxH = 520;
   const ar = config ? config.width / config.height : 16 / 9;
@@ -111,7 +108,11 @@ export function PreviewPlayer({ timeline, settings, onFrameUpdate, playerRef }: 
       >
         {timeline && config ? (
           <Player
-            key={`${config.width}x${config.height}`}
+            // Remotion keeps the Player instance when its key is unchanged.
+            // Include the authoritative duration so a timeline that grows after
+            // audio/script metadata resolves cannot stay stuck at the old
+            // shorter duration (for example 06:10 instead of 06:32).
+            key={`${config.width}x${config.height}x${config.fps}x${config.durationInFrames}`}
             ref={ref}
             component={VideoComposition}
             inputProps={{ timeline, settings }}
