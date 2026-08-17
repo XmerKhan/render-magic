@@ -1,4 +1,4 @@
-import { Freeze, Sequence, useVideoConfig, useCurrentFrame, interpolate, staticFile } from "remotion";
+import { Freeze, Sequence, useVideoConfig, useCurrentFrame, interpolate, staticFile, AbsoluteFill } from "remotion";
 import { Audio } from "@remotion/media";
 import { TransitionSeries } from "@remotion/transitions";
 import type { TimelineData, EditSettings } from "@/types";
@@ -23,11 +23,9 @@ export const VideoComposition: React.FC<{
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
 
-  // TransitionSeries overlaps neighboring sequences. Instead of shortening the
-  // entire timeline (which cumulatively moves every later scene earlier than
-  // the script/voiceover), each outgoing scene now owns a frozen tail equal to
-  // its transition duration. This keeps every scene boundary on the original
-  // script timeline while still allowing the visual transition to overlap.
+  // timeline.totalFrames is based on the absolute script timestamps and is also
+  // extended to the real voiceover duration. This prevents the renderer from
+  // cutting off the final spoken words when the last scene timestamp is short.
   const scenesFrames = Math.max(0, timeline.totalFrames);
 
   const voiceoverFrames = Math.max(
@@ -96,19 +94,27 @@ export const VideoComposition: React.FC<{
 
       <Sequence from={introFrames} durationInFrames={scenesFrames}>
         <TransitionSeries>
+          {/* Preserve any intentional silence before the first timestamp. */}
+          {timeline.scenes.length > 0 && timeline.scenes[0]!.startFrame > 0 && (
+            <TransitionSeries.Sequence
+              durationInFrames={timeline.scenes[0]!.startFrame}
+            >
+              <AbsoluteFill style={{ backgroundColor: "#000" }} />
+            </TransitionSeries.Sequence>
+          )}
+
           {timeline.scenes.map((scene, i) => {
             const isLast = i === timeline.scenes.length - 1;
             const nextScene = timeline.scenes[i + 1];
+            const nextStartFrame = nextScene?.startFrame;
+            const naturalGapFrames = nextStartFrame == null
+              ? Math.max(0, scenesFrames - scene.endFrame)
+              : Math.max(0, nextStartFrame - scene.endFrame);
+
             const transitionMaxFrames = !isLast && nextScene
               ? Math.max(1, Math.min(scene.durationFrames, nextScene.durationFrames))
               : undefined;
 
-            // A TransitionSeries transition consumes frames from both adjacent
-            // sequences. Very short scenes can be shorter than the configured
-            // transition (for example a 5-frame scene with a 9-frame fade),
-            // which Remotion rejects at render time. Clamp the transition to the
-            // shorter adjacent scene and use the exact same duration for the
-            // frozen outgoing tail and the transition itself.
             const transitionHoldFrames = isLast
               ? 0
               : getTransition(
@@ -119,7 +125,13 @@ export const VideoComposition: React.FC<{
                   height,
                   transitionMaxFrames,
                 ).timing.getDurationInFrames({ fps });
-            const sequenceDuration = scene.durationFrames + transitionHoldFrames;
+
+            // TransitionSeries subtracts transition duration from the overall
+            // sequence. Adding the transition hold back onto the outgoing scene
+            // therefore preserves the exact absolute timestamp. The natural gap
+            // is frozen on the outgoing frame before the transition begins.
+            const frozenTailFrames = naturalGapFrames + transitionHoldFrames;
+            const sequenceDuration = scene.durationFrames + frozenTailFrames;
 
             const items: React.ReactNode[] = [];
             items.push(
@@ -127,8 +139,8 @@ export const VideoComposition: React.FC<{
                 <Sequence durationInFrames={scene.durationFrames}>
                   <SceneComponent scene={scene} settings={settings} />
                 </Sequence>
-                {transitionHoldFrames > 0 && (
-                  <Sequence from={scene.durationFrames} durationInFrames={transitionHoldFrames}>
+                {frozenTailFrames > 0 && (
+                  <Sequence from={scene.durationFrames} durationInFrames={frozenTailFrames}>
                     <Freeze frame={scene.durationFrames - 1}>
                       <SceneComponent scene={scene} settings={settings} />
                     </Freeze>
@@ -151,7 +163,7 @@ export const VideoComposition: React.FC<{
                   key={`trans-${scene.id}`}
                   presentation={presentation}
                   timing={timing}
-                />,
+                />
               );
             }
 
