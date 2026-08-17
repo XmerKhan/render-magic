@@ -21,16 +21,33 @@ export interface CompositionProps {
   settings: EditSettings;
 }
 
-/** Long-edge pixel target for each export resolution. */
 const RESOLUTION_LONG_EDGE: Record<string, number> = {
   "720p": 1280,
   "1080p": 1920,
   "4k": 3840,
 };
 
-/** h264 requires even dimensions. */
 function even(n: number) {
   return Math.max(2, Math.round(n / 2) * 2);
+}
+
+/**
+ * Derive duration from the actual scene boundaries instead of trusting a cached
+ * totalFrames value. This is important for long JSON timelines: if a stale or
+ * truncated totalFrames value is carried into the render job, Remotion will
+ * legitimately stop at that frame and the remaining scenes/audio disappear.
+ */
+export function getAuthoritativeTimelineFrames(timeline: TimelineData): number {
+  const fps = timeline.fps || 30;
+  const sceneEnd = timeline.scenes.reduce(
+    (max, scene) => Math.max(max, Number(scene.endFrame) || 0),
+    0,
+  );
+  const voiceoverEnd = Math.max(
+    0,
+    Math.round((Number(timeline.voiceoverDurationSec) || 0) * fps),
+  );
+  return Math.max(1, sceneEnd, voiceoverEnd, Number(timeline.totalFrames) || 0);
 }
 
 export function getCompositionConfig(timeline: TimelineData, settings: EditSettings) {
@@ -39,10 +56,10 @@ export function getCompositionConfig(timeline: TimelineData, settings: EditSetti
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
 
-  // Do not subtract transition overlap here. VideoComposition compensates for
-  // TransitionSeries overlap by freezing the outgoing scene during its
-  // transition tail, preserving the original scene/script timeline.
-  const scenesFrames = Math.max(0, timeline.totalFrames);
+  // Scene end frames are authoritative. We deliberately take the maximum of
+  // all scene boundaries and the measured voiceover duration so the preview,
+  // render payload, chunk ranges and final stitch all use the same duration.
+  const scenesFrames = getAuthoritativeTimelineFrames(timeline);
   const durationInFrames = scenesFrames + introFrames + outroFrames;
 
   const longEdge = RESOLUTION_LONG_EDGE[settings.exportResolution] ?? 1920;
