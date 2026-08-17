@@ -73,12 +73,15 @@ export function validateScript(
     const diff = Math.abs(scriptDurationSec - voiceoverDurationSec);
     if (diff > 1.0) {
       warnings.push(
-        `Script total duration (${scriptDurationSec.toFixed(2)}s) differs from voiceover duration (${voiceoverDurationSec.toFixed(2)}s) by ${diff.toFixed(2)}s.`,
+        `Script total duration (${scriptDurationSec.toFixed(2)}s) differs from measured voiceover duration (${voiceoverDurationSec.toFixed(2)}s) by ${diff.toFixed(2)}s.`,
       );
     }
+    // JSON timestamps are the authoritative visual timeline. A browser/media
+    // duration that is shorter than the final timestamp must not invalidate the
+    // whole timeline, otherwise the last scenes can never be rendered.
     if (scriptDurationSec > voiceoverDurationSec + 0.5) {
-      errors.push(
-        `Script (${scriptDurationSec.toFixed(2)}s) is longer than the voiceover (${voiceoverDurationSec.toFixed(2)}s). Scenes will extend past the audio.`,
+      warnings.push(
+        `Measured voiceover duration is shorter than the script timestamps. The timeline will use the script endpoint (${scriptDurationSec.toFixed(2)}s) to preserve every scene and voiceover line.`,
       );
     }
   }
