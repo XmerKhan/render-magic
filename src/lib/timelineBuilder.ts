@@ -74,7 +74,6 @@ export function buildTimeline(
   musicUrl: string | null = null,
 ): TimelineData {
   const { fps } = settings;
-  const scenes: TimelineScene[] = [];
 
   const nameMap = new Map<string, MediaAsset>();
   for (const asset of mediaMap.values()) {
@@ -82,23 +81,35 @@ export function buildTimeline(
   }
   const resolveMedia = (id: string) => mediaMap.get(id) ?? nameMap.get(id);
 
-  // IMPORTANT: script timestamps are absolute voiceover time. Do not rebuild
-  // the timeline by cumulatively adding scene durations: that silently removes
-  // intentional pauses and causes scene/voice drift further into the video.
+  // Script timestamps are absolute voiceover timestamps. The scene boundary
+  // is the START of the next script line, not the end of the previous line.
+  // This makes every JSON line own exactly one visual interval and preserves
+  // pauses naturally by holding that visual until the next line starts.
   const sorted = [...segments]
     .filter((seg) => Number.isFinite(seg.startTime) && Number.isFinite(seg.endTime) && seg.endTime > seg.startTime)
     .sort((a, b) => a.startTime - b.startTime);
 
+  const scenes: TimelineScene[] = [];
+
   sorted.forEach((seg, index) => {
     const media = resolveMedia(seg.mediaId);
-    if (!media) return;
+    if (!media) {
+      // Never silently drop a JSON scene. Validation normally catches this,
+      // but throwing here prevents a partially-rendered timeline if state races.
+      throw new Error(`Scene "${seg.sceneId}" references media "${seg.mediaId}" which is not loaded.`);
+    }
+
+    const nextStartTime = sorted[index + 1]?.startTime;
+    const effectiveEndTime = nextStartTime != null
+      ? Math.max(seg.startTime, nextStartTime)
+      : Math.max(seg.endTime, voiceoverDurationSec, seg.startTime);
 
     const startFrame = Math.max(0, Math.round(seg.startTime * fps));
-    const endFrame = Math.max(startFrame + 1, Math.round(seg.endTime * fps));
+    const endFrame = Math.max(startFrame + 1, Math.round(effectiveEndTime * fps));
     const durationFrames = endFrame - startFrame;
     const durationSec = durationFrames / fps;
 
-    const scene: TimelineScene = {
+    scenes.push({
       id: seg.sceneId,
       media,
       startFrame,
@@ -114,14 +125,12 @@ export function buildTimeline(
       transitionIn: pickTransition(settings.transitionPack, index, sorted.length),
       transitionOut: pickTransition(settings.transitionPack, index + 1, sorted.length),
       kenBurns: buildKenBurns(durationSec, index + 1),
-    };
-
-    scenes.push(scene);
+    });
   });
 
-  // The audio is authoritative for the end of the composition. If the last
-  // timestamp ends slightly before the actual audio, the renderer will hold
-  // the final visual instead of cutting off the last spoken lines.
+  // Audio is authoritative for the final duration. The final scene is held
+  // until the actual voiceover ends, so the last spoken lines can never be
+  // truncated merely because the last JSON segment ended early.
   const lastSceneEndFrame = scenes.length > 0
     ? scenes[scenes.length - 1]!.endFrame
     : 0;
