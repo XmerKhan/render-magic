@@ -21,7 +21,6 @@ const chunkRefSchema = z.object({
 });
 
 const bodySchema = z.discriminatedUnion("action", [
-  // Called once per render chunk (one per GitHub Actions matrix job).
   chunkRefSchema.extend({ action: z.literal("claim") }),
   chunkRefSchema.extend({
     action: z.literal("progress"),
@@ -43,7 +42,6 @@ const bodySchema = z.discriminatedUnion("action", [
     error: z.string().max(2000),
     final: z.boolean().default(false),
   }),
-  // Called once by the stitch job, after every chunk has rendered.
   z.object({
     action: z.literal("stitch-claim"),
     jobId: z.string().uuid(),
@@ -70,19 +68,6 @@ function json(body: unknown, status = 200) {
   });
 }
 
-/**
- * Callback endpoint for the GitHub Actions render worker.
- *
- * A render job is split into `chunk_count` parallel chunks (matrix jobs), each
- * of which claims its own frame range, renders it, and uploads a segment. A
- * final stitch job (see .github/workflows/render.yml) concatenates the
- * segments with ffmpeg once every chunk job has succeeded, and calls
- * "complete" with the final MP4 in place.
- *
- * Authentication is the per-job `access_token`, which the app passes to the
- * workflow at dispatch time. A leaked token grants access to exactly one job's
- * media and output, and nothing else in the project.
- */
 export const Route = createFileRoute("/api/public/render-worker")({
   server: {
     handlers: {
@@ -117,10 +102,6 @@ export const Route = createFileRoute("/api/public/render-worker")({
         const payload = job.payload as unknown as RenderJobPayload;
 
         if (parsed.action === "claim") {
-          // First chunk to reach us flips the job into "rendering" and pins
-          // chunk_count / initializes the per-chunk progress array. Later
-          // chunks (or a retried dispatch) see it already set and skip this -
-          // re-running it would reset progress other chunks already reported.
           const { data: checkpoint } = await supabaseAdmin
             .from("render_job_chunks")
             .select("status, attempt, frame_from, frame_to, output_path")
@@ -157,14 +138,13 @@ export const Route = createFileRoute("/api/public/render-worker")({
             .eq("job_id", job.id)
             .eq("chunk_index", parsed.chunkIndex);
 
-          // Resolve every `job-asset:<key>` placeholder into a signed URL.
           const signedByKey: Record<string, string> = {};
-          for (const [key, path] of Object.entries(payload.assetPaths ?? {})) {
+          for (const [key, assetPath] of Object.entries(payload.assetPaths ?? {})) {
             const { data: signed, error: signError } = await supabaseAdmin.storage
               .from(ASSETS_BUCKET)
-              .createSignedUrl(path, ASSET_URL_TTL);
+              .createSignedUrl(assetPath, ASSET_URL_TTL);
             if (signError || !signed) {
-              console.error(`[render-worker] could not sign asset ${path}`, signError);
+              console.error(`[render-worker] could not sign asset ${assetPath}`, signError);
               return json({ error: `Missing media file for "${key}"` }, 500);
             }
             signedByKey[key] = signed.signedUrl;
@@ -208,6 +188,23 @@ export const Route = createFileRoute("/api/public/render-worker")({
 
         if (parsed.action === "progress" || parsed.action === "heartbeat") {
           const now = new Date();
+
+          // IMPORTANT: render.mjs reports progress/heartbeat asynchronously.
+          // A heartbeat that was already in flight can arrive after
+          // complete-chunk. Never allow that stale callback to downgrade a
+          // completed chunk back to "rendering"; doing so makes the stitch job
+          // incorrectly believe a successful chunk is still incomplete.
+          const { data: currentChunk } = await supabaseAdmin
+            .from("render_job_chunks")
+            .select("status")
+            .eq("job_id", job.id)
+            .eq("chunk_index", parsed.chunkIndex)
+            .maybeSingle();
+
+          if (currentChunk?.status === "completed") {
+            return json({ ok: true, ignored: true });
+          }
+
           await supabaseAdmin
             .from("render_job_chunks")
             .update({
@@ -216,7 +213,8 @@ export const Route = createFileRoute("/api/public/render-worker")({
               last_heartbeat_at: now.toISOString(),
             })
             .eq("job_id", job.id)
-            .eq("chunk_index", parsed.chunkIndex);
+            .eq("chunk_index", parsed.chunkIndex)
+            .neq("status", "completed");
 
           const { data: chunks } = await supabaseAdmin
             .from("render_job_chunks")
@@ -239,7 +237,6 @@ export const Route = createFileRoute("/api/public/render-worker")({
             .from("render_jobs")
             .update({
               status: "rendering",
-              // Reserve the last few points for the stitch step.
               progress: Math.min(94, Math.round(overall)),
               message: parsed.action === "progress" ? parsed.message ?? "Rendering" : `Rendering chunk ${parsed.chunkIndex + 1}/${parsed.chunkCount}`,
               rendered_frames: renderedFrames,
@@ -251,7 +248,10 @@ export const Route = createFileRoute("/api/public/render-worker")({
               elapsed_seconds: elapsedSeconds,
               eta_seconds: etaSeconds,
             })
-            .eq("id", job.id);
+            .eq("id", job.id)
+            .neq("status", "stitching")
+            .neq("status", "done")
+            .neq("status", "completed");
           return json({ ok: true });
         }
 
@@ -262,11 +262,22 @@ export const Route = createFileRoute("/api/public/render-worker")({
           const name = outputPath.slice(slash + 1);
           const { data: listed } = await supabaseAdmin.storage.from(OUTPUT_BUCKET).list(folder, { search: name });
           if (!listed?.some((file) => file.name === name)) return json({ error: "Uploaded chunk was not found" }, 400);
+
+          // Idempotent completion. Multiple late callbacks/retries must never
+          // move a completed chunk backwards.
           await supabaseAdmin
             .from("render_job_chunks")
-            .update({ status: "completed", progress: 100, output_path: outputPath, completed_at: new Date().toISOString(), last_heartbeat_at: new Date().toISOString(), error: null })
+            .update({
+              status: "completed",
+              progress: 100,
+              output_path: outputPath,
+              completed_at: new Date().toISOString(),
+              last_heartbeat_at: new Date().toISOString(),
+              error: null,
+            })
             .eq("job_id", job.id)
             .eq("chunk_index", parsed.chunkIndex);
+
           const { count } = await supabaseAdmin
             .from("render_job_chunks")
             .select("chunk_index", { count: "exact", head: true })
@@ -282,31 +293,82 @@ export const Route = createFileRoute("/api/public/render-worker")({
         }
 
         if (parsed.action === "chunk-fail") {
+          const { data: currentChunk } = await supabaseAdmin
+            .from("render_job_chunks")
+            .select("status")
+            .eq("job_id", job.id)
+            .eq("chunk_index", parsed.chunkIndex)
+            .maybeSingle();
+          if (currentChunk?.status === "completed") {
+            return json({ ok: true, ignored: true });
+          }
+
           await supabaseAdmin.from("render_job_chunks").update({
             status: parsed.final ? "failed" : "retrying",
             error: parsed.error,
             last_heartbeat_at: new Date().toISOString(),
-          }).eq("job_id", job.id).eq("chunk_index", parsed.chunkIndex);
+          }).eq("job_id", job.id).eq("chunk_index", parsed.chunkIndex).neq("status", "completed");
           await supabaseAdmin.from("render_jobs").update({
             status: parsed.final ? "failed" : "retrying",
             error: parsed.final ? parsed.error : null,
             message: parsed.final ? `Chunk ${parsed.chunkIndex + 1} failed` : `Retrying chunk ${parsed.chunkIndex + 1}/${parsed.chunkCount}`,
             current_chunk: parsed.chunkIndex,
             last_heartbeat_at: new Date().toISOString(),
-          }).eq("id", job.id);
+          }).eq("id", job.id).neq("status", "stitching").neq("status", "done").neq("status", "completed");
           return json({ ok: true });
         }
 
         if (parsed.action === "stitch-claim") {
           const chunkUrls: string[] = [];
-          const { data: completedChunks } = await supabaseAdmin
+          const { data: chunks } = await supabaseAdmin
             .from("render_job_chunks")
             .select("chunk_index, output_path, status")
             .eq("job_id", job.id)
             .order("chunk_index");
-          if (!completedChunks || completedChunks.length !== parsed.chunkCount || completedChunks.some((chunk) => chunk.status !== "completed")) {
-            return json({ error: "Not all chunks have completed" }, 409);
+
+          if (!chunks || chunks.length !== parsed.chunkCount) {
+            return json({ error: `Expected ${parsed.chunkCount} chunk checkpoints, found ${chunks?.length ?? 0}` }, 409);
           }
+
+          // The render workflow only reaches stitch after every matrix job is
+          // successful. Storage is therefore the final source of truth for a
+          // chunk. Recover a checkpoint if a stale callback left its DB status
+          // behind even though the MP4 was uploaded successfully.
+          const missing: number[] = [];
+          for (let i = 0; i < parsed.chunkCount; i += 1) {
+            const expectedPath = chunkOutputPath(job.id, i);
+            const slash = expectedPath.lastIndexOf("/");
+            const folder = expectedPath.slice(0, slash);
+            const name = expectedPath.slice(slash + 1);
+            const { data: listed, error: listError } = await supabaseAdmin.storage
+              .from(OUTPUT_BUCKET)
+              .list(folder, { search: name });
+            if (listError || !listed?.some((file) => file.name === name)) {
+              missing.push(i);
+              continue;
+            }
+
+            const row = chunks.find((chunk) => chunk.chunk_index === i);
+            if (row?.status !== "completed") {
+              await supabaseAdmin
+                .from("render_job_chunks")
+                .update({
+                  status: "completed",
+                  progress: 100,
+                  output_path: expectedPath,
+                  completed_at: new Date().toISOString(),
+                  last_heartbeat_at: new Date().toISOString(),
+                  error: null,
+                })
+                .eq("job_id", job.id)
+                .eq("chunk_index", i);
+            }
+          }
+
+          if (missing.length) {
+            return json({ error: `Missing rendered chunks: ${missing.join(", ")}` }, 409);
+          }
+
           for (let i = 0; i < parsed.chunkCount; i += 1) {
             const { data: signed, error: signError } = await supabaseAdmin.storage
               .from(OUTPUT_BUCKET)
@@ -341,7 +403,6 @@ export const Route = createFileRoute("/api/public/render-worker")({
         }
 
         if (parsed.action === "complete") {
-          // Trust nothing: verify the object actually landed in storage.
           const slash = payload.outputPath.lastIndexOf("/");
           const folder = slash === -1 ? "" : payload.outputPath.slice(0, slash);
           const name = payload.outputPath.slice(slash + 1);
@@ -374,7 +435,6 @@ export const Route = createFileRoute("/api/public/render-worker")({
             })
             .eq("id", job.id);
 
-          // Best-effort cleanup of the intermediate per-chunk files.
           const chunkPaths = Array.from({ length: job.chunk_count || 1 }, (_, i) =>
             chunkOutputPath(job.id, i),
           );
