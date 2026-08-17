@@ -57,8 +57,13 @@ export function getTransition(
   transitionDurationSec: number,
   width = 1920,
   height = 1080,
+  maxDurationInFrames?: number,
 ): { presentation: any; timing: TransitionTiming } {
-  const durationInFrames = Math.max(1, Math.round(transitionDurationSec * fps));
+  const requestedDurationInFrames = Math.max(1, Math.round(transitionDurationSec * fps));
+  const durationInFrames = Math.max(
+    1,
+    Math.min(requestedDurationInFrames, maxDurationInFrames ?? requestedDurationInFrames),
+  );
   const timing = linearTiming({ durationInFrames });
 
   switch (type) {
