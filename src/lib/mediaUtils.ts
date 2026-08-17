@@ -1,9 +1,38 @@
 export async function getAudioDuration(url: string): Promise<number> {
+  // HTMLMediaElement.duration can be unreliable for some VBR/encoded MP3s and
+  // may report a shorter container duration than the decoded audio actually
+  // contains. The timeline uses this value as its authoritative endpoint, so
+  // a bad metadata duration can truncate the final scenes and voiceover.
+  try {
+    const arrayBuffer = await fetch(url).then((response) => {
+      if (!response.ok) throw new Error(`Audio fetch failed [${response.status}]`);
+      return response.arrayBuffer();
+    });
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const audioCtx = new AudioContextCtor();
+    try {
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+      const duration = audioBuffer.duration;
+      if (Number.isFinite(duration) && duration > 0) return duration;
+    } finally {
+      await audioCtx.close();
+    }
+  } catch {
+    // Fall back to media metadata below for formats the Web Audio decoder cannot
+    // decode. This preserves support for unusual browser-supported audio files.
+  }
+
   return new Promise((resolve, reject) => {
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.onloadedmetadata = () => {
-      resolve(audio.duration);
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        resolve(audio.duration);
+      } else {
+        reject(new Error('Audio duration is unavailable'));
+      }
     };
     audio.onerror = () => reject(new Error('Failed to load audio metadata'));
     audio.src = url;
