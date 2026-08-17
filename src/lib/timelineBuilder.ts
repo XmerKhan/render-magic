@@ -81,13 +81,20 @@ export function buildTimeline(
   }
   const resolveMedia = (id: string) => mediaMap.get(id) ?? nameMap.get(id);
 
-  // Script timestamps are absolute voiceover timestamps. The scene boundary
-  // is the START of the next script line, not the end of the previous line.
-  // This makes every JSON line own exactly one visual interval and preserves
-  // pauses naturally by holding that visual until the next line starts.
+  // JSON/script timestamps are authoritative for scene boundaries. The audio
+  // file duration is also considered, but a shorter browser/media measurement
+  // must never remove the final timestamped scenes.
   const sorted = [...segments]
     .filter((seg) => Number.isFinite(seg.startTime) && Number.isFinite(seg.endTime) && seg.endTime > seg.startTime)
     .sort((a, b) => a.startTime - b.startTime);
+
+  const scriptEndTime = sorted.length > 0
+    ? Math.max(...sorted.map((seg) => seg.endTime).filter(Number.isFinite))
+    : 0;
+  const effectiveVoiceoverDurationSec = Math.max(
+    Number.isFinite(voiceoverDurationSec) ? voiceoverDurationSec : 0,
+    scriptEndTime,
+  );
 
   const scenes: TimelineScene[] = [];
 
@@ -102,7 +109,7 @@ export function buildTimeline(
     const nextStartTime = sorted[index + 1]?.startTime;
     const effectiveEndTime = nextStartTime != null
       ? Math.max(seg.startTime, nextStartTime)
-      : Math.max(seg.endTime, voiceoverDurationSec, seg.startTime);
+      : Math.max(seg.endTime, effectiveVoiceoverDurationSec, seg.startTime);
 
     const startFrame = Math.max(0, Math.round(seg.startTime * fps));
     const endFrame = Math.max(startFrame + 1, Math.round(effectiveEndTime * fps));
@@ -128,13 +135,13 @@ export function buildTimeline(
     });
   });
 
-  // Audio is authoritative for the final duration. The final scene is held
-  // until the actual voiceover ends, so the last spoken lines can never be
-  // truncated merely because the last JSON segment ended early.
+  // The effective audio endpoint includes the final JSON timestamp. This is
+  // critical when a VBR/browser duration measurement is shorter than the
+  // timestamped voiceover; otherwise the editor and render would stop early.
   const lastSceneEndFrame = scenes.length > 0
     ? scenes[scenes.length - 1]!.endFrame
     : 0;
-  const voiceoverFrames = Math.max(0, Math.round(voiceoverDurationSec * fps));
+  const voiceoverFrames = Math.max(0, Math.round(effectiveVoiceoverDurationSec * fps));
   const totalFrames = Math.max(lastSceneEndFrame, voiceoverFrames);
 
   return {
@@ -143,7 +150,7 @@ export function buildTimeline(
     totalDurationSec: totalFrames / fps,
     fps,
     voiceoverUrl,
-    voiceoverDurationSec,
+    voiceoverDurationSec: effectiveVoiceoverDurationSec,
     musicUrl,
     settings,
   };
