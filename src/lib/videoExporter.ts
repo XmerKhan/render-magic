@@ -128,6 +128,41 @@ function prepareTimeline(
   };
 }
 
+function assertTimelineIntegrity(timeline: TimelineData, fps: number): void {
+  if (!timeline.voiceoverUrl) throw new Error("A voiceover is required for timestamp-based rendering.");
+  if (!timeline.scenes.length) throw new Error("The timeline contains no scenes.");
+
+  const voiceoverFrames = Math.max(0, Math.round(timeline.voiceoverDurationSec * fps));
+  if (timeline.totalFrames < voiceoverFrames) {
+    throw new Error(
+      `Timeline is shorter than the voiceover (${(timeline.totalFrames / fps).toFixed(2)}s vs ${(voiceoverFrames / fps).toFixed(2)}s). Rendering was stopped to prevent truncation.`,
+    );
+  }
+
+  let previousStart = -1;
+  for (let i = 0; i < timeline.scenes.length; i += 1) {
+    const scene = timeline.scenes[i]!;
+    if (scene.startFrame < 0 || scene.endFrame <= scene.startFrame) {
+      throw new Error(`Invalid timing for scene "${scene.id}".`);
+    }
+    if (scene.startFrame < previousStart) {
+      throw new Error(`Scene timestamps are not ordered around "${scene.id}".`);
+    }
+    const next = timeline.scenes[i + 1];
+    if (next && Math.abs(scene.endFrame - next.startFrame) > 1) {
+      throw new Error(
+        `Scene timing gap/overlap detected between "${scene.id}" and "${next.id}". The renderer requires each next scene to begin at the next JSON timestamp.`,
+      );
+    }
+    previousStart = scene.startFrame;
+  }
+
+  const last = timeline.scenes[timeline.scenes.length - 1]!;
+  if (last.endFrame < voiceoverFrames) {
+    throw new Error("The final scene does not cover the complete voiceover. Rendering was stopped to prevent a truncated ending.");
+  }
+}
+
 /**
  * The timeline holds live `File` handles (and possibly blob URLs / DOM objects).
  * Those cannot cross the server-function boundary — the RPC serializer throws a
@@ -158,6 +193,7 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
   const prepared = prepareTimeline(opts.timeline, assets, voiceoverFile, musicFile);
   const settings: EditSettings = { ...opts.settings, musicUrl: prepared.timeline.musicUrl };
   const config = getCompositionConfig(prepared.timeline, settings);
+  assertTimelineIntegrity(prepared.timeline, config.fps);
 
   let job: Awaited<ReturnType<typeof createRenderJob>>;
   try {
@@ -175,7 +211,6 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
   } catch (e) {
     throw new Error(`Could not create the render job: ${(e as Error).message}`);
   }
-
 
   // --- Upload media -------------------------------------------------------
   const total = job.uploads.length;
