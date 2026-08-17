@@ -20,7 +20,7 @@ const TRANSITION_POOLS: Record<TransitionPack, TransitionType[]> = {
 function pickTransition(
   pack: TransitionPack,
   index: number,
-  total: number,
+  _total: number,
 ): TransitionType {
   const pool = TRANSITION_POOLS[pack];
   if (pack === 'minimal') {
@@ -75,7 +75,6 @@ export function buildTimeline(
 ): TimelineData {
   const { fps } = settings;
   const scenes: TimelineScene[] = [];
-  let cumulativeFrame = 0;
 
   const nameMap = new Map<string, MediaAsset>();
   for (const asset of mediaMap.values()) {
@@ -83,21 +82,27 @@ export function buildTimeline(
   }
   const resolveMedia = (id: string) => mediaMap.get(id) ?? nameMap.get(id);
 
-  const sorted = [...segments].sort((a, b) => a.startTime - b.startTime);
+  // IMPORTANT: script timestamps are absolute voiceover time. Do not rebuild
+  // the timeline by cumulatively adding scene durations: that silently removes
+  // intentional pauses and causes scene/voice drift further into the video.
+  const sorted = [...segments]
+    .filter((seg) => Number.isFinite(seg.startTime) && Number.isFinite(seg.endTime) && seg.endTime > seg.startTime)
+    .sort((a, b) => a.startTime - b.startTime);
 
   sorted.forEach((seg, index) => {
     const media = resolveMedia(seg.mediaId);
     if (!media) return;
 
-    const durationSec = seg.endTime - seg.startTime;
-    const durationFrames = Math.round(durationSec * fps);
-    const startFrame = cumulativeFrame;
+    const startFrame = Math.max(0, Math.round(seg.startTime * fps));
+    const endFrame = Math.max(startFrame + 1, Math.round(seg.endTime * fps));
+    const durationFrames = endFrame - startFrame;
+    const durationSec = durationFrames / fps;
 
     const scene: TimelineScene = {
       id: seg.sceneId,
       media,
       startFrame,
-      endFrame: startFrame + durationFrames,
+      endFrame,
       durationFrames,
       durationSec,
       text: seg.text,
@@ -107,22 +112,26 @@ export function buildTimeline(
       quote: seg.quote,
       lowerThird: seg.lowerThird,
       transitionIn: pickTransition(settings.transitionPack, index, sorted.length),
-      transitionOut: pickTransition(
-        settings.transitionPack,
-        index + 1,
-        sorted.length,
-      ),
+      transitionOut: pickTransition(settings.transitionPack, index + 1, sorted.length),
       kenBurns: buildKenBurns(durationSec, index + 1),
     };
 
     scenes.push(scene);
-    cumulativeFrame += durationFrames;
   });
+
+  // The audio is authoritative for the end of the composition. If the last
+  // timestamp ends slightly before the actual audio, the renderer will hold
+  // the final visual instead of cutting off the last spoken lines.
+  const lastSceneEndFrame = scenes.length > 0
+    ? scenes[scenes.length - 1]!.endFrame
+    : 0;
+  const voiceoverFrames = Math.max(0, Math.round(voiceoverDurationSec * fps));
+  const totalFrames = Math.max(lastSceneEndFrame, voiceoverFrames);
 
   return {
     scenes,
-    totalFrames: cumulativeFrame,
-    totalDurationSec: cumulativeFrame / fps,
+    totalFrames,
+    totalDurationSec: totalFrames / fps,
     fps,
     voiceoverUrl,
     voiceoverDurationSec,
