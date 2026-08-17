@@ -35,8 +35,6 @@ export const VideoComposition: React.FC<{
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
 
-  // Never trust a cached/truncated totalFrames value. The composition duration
-  // and the visual sequence must cover the same authoritative endpoint.
   const scenesFrames = getAuthoritativeSceneFrames(timeline, fps);
 
   const voiceoverFrames = Math.max(
@@ -117,10 +115,12 @@ export const VideoComposition: React.FC<{
             const isLast = i === timeline.scenes.length - 1;
             const nextScene = timeline.scenes[i + 1];
             const nextStartFrame = nextScene?.startFrame;
-            const naturalGapFrames = nextStartFrame == null
-              ? Math.max(0, scenesFrames - scene.endFrame)
-              : Math.max(0, nextStartFrame - scene.endFrame);
 
+            // scene.durationFrames already represents the absolute interval
+            // from this scene's start to the next scene's start (or to the
+            // final endpoint for the last scene). Do NOT add naturalGapFrames
+            // again here: doing so double-counts timestamp gaps and pushes all
+            // following scenes later than their JSON timestamps.
             const transitionMaxFrames = !isLast && nextScene
               ? Math.max(1, Math.min(scene.durationFrames, nextScene.durationFrames))
               : undefined;
@@ -136,8 +136,13 @@ export const VideoComposition: React.FC<{
                   transitionMaxFrames,
                 ).timing.getDurationInFrames({ fps });
 
-            const frozenTailFrames = naturalGapFrames + transitionHoldFrames;
-            const sequenceDuration = scene.durationFrames + frozenTailFrames;
+            // TransitionSeries overlaps a transition with the end of the
+            // outgoing sequence. Adding exactly the transition duration keeps
+            // the next scene's absolute startFrame unchanged after that
+            // overlap. The previous implementation also added the timestamp
+            // gap here, which caused cumulative drift and made the final video
+            // end at the wrong point.
+            const sequenceDuration = scene.durationFrames + transitionHoldFrames;
 
             const items: React.ReactNode[] = [];
             items.push(
@@ -145,8 +150,8 @@ export const VideoComposition: React.FC<{
                 <Sequence durationInFrames={scene.durationFrames}>
                   <SceneComponent scene={scene} settings={settings} />
                 </Sequence>
-                {frozenTailFrames > 0 && (
-                  <Sequence from={scene.durationFrames} durationInFrames={frozenTailFrames}>
+                {transitionHoldFrames > 0 && (
+                  <Sequence from={scene.durationFrames} durationInFrames={transitionHoldFrames}>
                     <Freeze frame={scene.durationFrames - 1}>
                       <SceneComponent scene={scene} settings={settings} />
                     </Freeze>
