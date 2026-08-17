@@ -1,16 +1,13 @@
 import type { EditSettings, MediaAsset, TimelineData } from "@/types";
-import { getCompositionConfig } from "@/remotion/config";
+import { getAuthoritativeTimelineFrames, getCompositionConfig } from "@/remotion/config";
 import { assetPlaceholder, type RenderUploadRequest } from "@/lib/renderTypes";
 import { createRenderJob, dispatchRenderJob, getRenderJob } from "@/lib/render.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 const ASSETS_BUCKET = "render-assets";
-
-/** Polling cadence and tolerance for transient network/API failures. */
 const POLL_INTERVAL_MS = 2000;
 const POLL_BACKOFF_MAX_MS = 15000;
 const MAX_CONSECUTIVE_POLL_FAILURES = 8;
-/** A worker is dead only when its server heartbeat is stale, not because a long render is slow. */
 const STALE_HEARTBEAT_MS = 15 * 60 * 1000;
 
 export interface ExportOptions {
@@ -61,14 +58,6 @@ function extensionFor(file: File): string {
   return dot > 0 ? file.name.slice(dot) : "";
 }
 
-/**
- * Rewrites the timeline so every media URL becomes a `job-asset:<key>`
- * placeholder, and returns the matching upload manifest.
- *
- * Assets are keyed by their stable asset id rather than by filename, so two
- * files with the same name (or an asset that was renamed) can never be mapped to
- * the wrong scene.
- */
 function prepareTimeline(
   timeline: TimelineData,
   assets: MediaAsset[],
@@ -107,7 +96,6 @@ function prepareTimeline(
     addUpload("voiceover", voiceoverFile, "audio/mpeg");
     voiceoverUrl = assetPlaceholder("voiceover");
   } else if (voiceoverUrl?.startsWith("blob:")) {
-    // A blob URL is meaningless on the render worker.
     voiceoverUrl = null;
   }
 
@@ -120,23 +108,29 @@ function prepareTimeline(
   }
 
   const settings: EditSettings = { ...timeline.settings, musicUrl };
-
-  return {
-    timeline: { ...timeline, scenes, voiceoverUrl, musicUrl, settings },
-    uploads,
-    files,
+  const preparedTimeline: TimelineData = {
+    ...timeline,
+    scenes,
+    voiceoverUrl,
+    musicUrl,
+    settings,
   };
+
+  // Recompute from every scene boundary and the measured audio duration. This
+  // prevents a stale totalFrames field from truncating the final chunks.
+  preparedTimeline.totalFrames = getAuthoritativeTimelineFrames(preparedTimeline);
+  preparedTimeline.totalDurationSec = preparedTimeline.totalFrames / preparedTimeline.fps;
+
+  return { timeline: preparedTimeline, uploads, files };
 }
 
 function assertTimelineIntegrity(timeline: TimelineData, fps: number): void {
   if (!timeline.voiceoverUrl) throw new Error("A voiceover is required for timestamp-based rendering.");
   if (!timeline.scenes.length) throw new Error("The timeline contains no scenes.");
 
-  const voiceoverFrames = Math.max(0, Math.round(timeline.voiceoverDurationSec * fps));
-  if (timeline.totalFrames < voiceoverFrames) {
-    throw new Error(
-      `Timeline is shorter than the voiceover (${(timeline.totalFrames / fps).toFixed(2)}s vs ${(voiceoverFrames / fps).toFixed(2)}s). Rendering was stopped to prevent truncation.`,
-    );
+  const authoritativeFrames = getAuthoritativeTimelineFrames(timeline);
+  if (timeline.totalFrames < authoritativeFrames) {
+    throw new Error("The render timeline duration is inconsistent with its scene boundaries.");
   }
 
   let previousStart = -1;
@@ -149,25 +143,22 @@ function assertTimelineIntegrity(timeline: TimelineData, fps: number): void {
       throw new Error(`Scene timestamps are not ordered around "${scene.id}".`);
     }
     const next = timeline.scenes[i + 1];
-    if (next && Math.abs(scene.endFrame - next.startFrame) > 1) {
-      throw new Error(
-        `Scene timing gap/overlap detected between "${scene.id}" and "${next.id}". The renderer requires each next scene to begin at the next JSON timestamp.`,
-      );
+    if (next && next.startFrame < scene.startFrame) {
+      throw new Error(`Scene timestamps are out of order between "${scene.id}" and "${next.id}".`);
     }
     previousStart = scene.startFrame;
   }
 
   const last = timeline.scenes[timeline.scenes.length - 1]!;
-  if (last.endFrame < voiceoverFrames) {
-    throw new Error("The final scene does not cover the complete voiceover. Rendering was stopped to prevent a truncated ending.");
+  const requiredEnd = Math.max(
+    last.endFrame,
+    Math.round((Number(timeline.voiceoverDurationSec) || 0) * fps),
+  );
+  if (timeline.totalFrames < requiredEnd) {
+    throw new Error("The final scene/audio endpoint is outside the render duration.");
   }
 }
 
-/**
- * The timeline holds live `File` handles (and possibly blob URLs / DOM objects).
- * Those cannot cross the server-function boundary — the RPC serializer throws a
- * cryptic "Seroval Error (step: N)". Reduce the payload to plain JSON first.
- */
 function toJsonSafe<T>(value: T, label: string): Record<string, unknown> {
   try {
     return JSON.parse(
@@ -212,7 +203,6 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
     throw new Error(`Could not create the render job: ${(e as Error).message}`);
   }
 
-  // --- Upload media -------------------------------------------------------
   const total = job.uploads.length;
   for (let i = 0; i < total; i += 1) {
     throwIfAborted(signal);
@@ -231,17 +221,13 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
         contentType: file.type || "application/octet-stream",
       });
 
-    if (error) {
-      throw new Error(`Upload failed for ${file.name}: ${error.message}`);
-    }
+    if (error) throw new Error(`Upload failed for ${file.name}: ${error.message}`);
   }
 
-  // --- Dispatch the render worker ----------------------------------------
   throwIfAborted(signal);
   onProgress(13, "Starting the render worker...");
   await dispatchRenderJob({ data: { jobId: job.jobId, token: job.token } });
 
-  // --- Poll ---------------------------------------------------------------
   let consecutiveFailures = 0;
   let lastMessage = "Waiting for the render worker...";
 
@@ -259,22 +245,15 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
       state = await getRenderJob({ data: { jobId: job.jobId, token: job.token } });
       consecutiveFailures = 0;
     } catch (err) {
-      // A single failed poll must never abort a render that is still running.
       consecutiveFailures += 1;
       if (consecutiveFailures >= MAX_CONSECUTIVE_POLL_FAILURES) {
-        throw new Error(
-          `Lost contact with the render service: ${
-            err instanceof Error ? err.message : "unknown error"
-          }`,
-        );
+        throw new Error(`Lost contact with the render service: ${err instanceof Error ? err.message : "unknown error"}`);
       }
       onProgress(-1, `${lastMessage} (reconnecting ${consecutiveFailures}/${MAX_CONSECUTIVE_POLL_FAILURES})`);
       continue;
     }
 
-    if (state.status === "failed") {
-      throw new Error(state.error ?? "The render failed on the worker");
-    }
+    if (state.status === "failed") throw new Error(state.error ?? "The render failed on the worker");
 
     if (
       state.lastHeartbeatAt &&
@@ -294,7 +273,6 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
       ? ` · ${state.completedChunks}/${state.totalChunks} chunks · ${formatDuration(state.elapsedSeconds)} elapsed${state.etaSeconds === null ? "" : ` · ~${formatDuration(state.etaSeconds)} left`}`
       : "";
     lastMessage = `${state.message || "Rendering..."}${chunkDetail}`;
-    // Map worker progress (0-100) onto the 13-99 range we own.
     onProgress(13 + (state.progress / 100) * 86, lastMessage, {
       currentChunk: state.currentChunk,
       completedChunks: state.completedChunks,
