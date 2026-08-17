@@ -98,6 +98,17 @@ export const VideoComposition: React.FC<{
         <TransitionSeries>
           {timeline.scenes.map((scene, i) => {
             const isLast = i === timeline.scenes.length - 1;
+            const nextScene = timeline.scenes[i + 1];
+            const transitionMaxFrames = !isLast && nextScene
+              ? Math.max(1, Math.min(scene.durationFrames, nextScene.durationFrames))
+              : undefined;
+
+            // A TransitionSeries transition consumes frames from both adjacent
+            // sequences. Very short scenes can be shorter than the configured
+            // transition (for example a 5-frame scene with a 9-frame fade),
+            // which Remotion rejects at render time. Clamp the transition to the
+            // shorter adjacent scene and use the exact same duration for the
+            // frozen outgoing tail and the transition itself.
             const transitionHoldFrames = isLast
               ? 0
               : getTransition(
@@ -106,6 +117,7 @@ export const VideoComposition: React.FC<{
                   settings.transitionDuration,
                   width,
                   height,
+                  transitionMaxFrames,
                 ).timing.getDurationInFrames({ fps });
             const sequenceDuration = scene.durationFrames + transitionHoldFrames;
 
@@ -132,6 +144,7 @@ export const VideoComposition: React.FC<{
                 settings.transitionDuration,
                 width,
                 height,
+                transitionMaxFrames,
               );
               items.push(
                 <TransitionSeries.Transition
