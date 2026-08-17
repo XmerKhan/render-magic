@@ -32,7 +32,7 @@ if (!Number.isInteger(CHUNK_COUNT) || CHUNK_COUNT < 1) {
 const WORKER_ENDPOINT = `${APP_URL}/api/public/render-worker`;
 const WORKDIR = fs.mkdtempSync(path.join(os.tmpdir(), "stitch-"));
 
-async function callApp(body, { retries = 3 } = {}) {
+async function callApp(body, { retries = 3, retry409 = false } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
@@ -43,14 +43,22 @@ async function callApp(body, { retries = 3 } = {}) {
       });
       const text = await res.text();
       if (!res.ok) {
-        if (res.status >= 400 && res.status < 500) {
-          throw new Error(`App rejected ${body.action} [${res.status}]: ${text}`);
+        const message = `App rejected ${body.action} [${res.status}]: ${text}`;
+        if (retry409 && res.status === 409 && attempt < retries) {
+          console.log(`Stitch prerequisites are not ready yet; retrying in 5s (${attempt + 1}/${retries})`);
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
         }
+        if (res.status >= 400 && res.status < 500) throw new Error(message);
         throw new Error(`App error on ${body.action} [${res.status}]: ${text}`);
       }
       return text ? JSON.parse(text) : {};
     } catch (err) {
       lastError = err;
+      if (retry409 && String(err.message).includes("App rejected stitch-claim [409]") && attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
       if (String(err.message).includes("App rejected")) throw err;
       if (attempt === retries) break;
       await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
@@ -97,13 +105,16 @@ async function verifyVideo(file, expectedDuration = null) {
 
 async function main() {
   console.log(`Stitching ${CHUNK_COUNT} chunk(s) for job ${JOB_ID}`);
-  const { chunkUrls, outputUploadUrl, totalFrames, fps } = await callApp({
-    action: "stitch-claim",
-    chunkCount: CHUNK_COUNT,
-  });
+  const { chunkUrls, outputUploadUrl, totalFrames, fps } = await callApp(
+    { action: "stitch-claim", chunkCount: CHUNK_COUNT },
+    { retries: 12, retry409: true },
+  );
   const expectedDuration = Number(totalFrames) / Number(fps);
   if (!Number.isFinite(expectedDuration) || expectedDuration <= 0) {
     throw new Error("The render service returned an invalid expected duration");
+  }
+  if (!Array.isArray(chunkUrls) || chunkUrls.length !== CHUNK_COUNT) {
+    throw new Error(`Render service returned ${chunkUrls?.length ?? 0} chunks; expected ${CHUNK_COUNT}`);
   }
 
   const chunkPaths = [];
