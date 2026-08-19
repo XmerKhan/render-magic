@@ -8,7 +8,10 @@ const ASSETS_BUCKET = "render-assets";
 const POLL_INTERVAL_MS = 2000;
 const POLL_BACKOFF_MAX_MS = 15000;
 const MAX_CONSECUTIVE_POLL_FAILURES = 8;
-const STALE_HEARTBEAT_MS = 15 * 60 * 1000;
+// A busy free GitHub runner can occasionally pause callback delivery while
+// Chromium/FFmpeg is under heavy load. Do not falsely abort a healthy render
+// after 15 minutes; the worker itself has a 5-hour hard timeout.
+const STALE_HEARTBEAT_MS = 45 * 60 * 1000;
 
 export interface ExportOptions {
   timeline: TimelineData;
