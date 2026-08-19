@@ -43,12 +43,13 @@ export interface RenderJobPayload {
 }
 
 /**
- * Long timelines are split into parallel chunks so each GitHub Actions matrix
- * job only has to render a couple of minutes on its 2 vCPUs, instead of one
- * job rendering the entire video serially against the 60-minute job timeout.
+ * Long timelines are split into moderately sized parallel chunks so each
+ * GitHub Actions matrix job renders a useful amount of video without creating
+ * dozens of tiny jobs. Tiny 15-second chunks caused excessive runner startup,
+ * dependency/bundling and asset-download overhead and made long videos slower.
  */
-export const CHUNK_TARGET_SECONDS = 15;
-export const CHUNK_MAX_COUNT = 32;
+export const CHUNK_TARGET_SECONDS = 30;
+export const CHUNK_MAX_COUNT = 18;
 
 export function computeChunkCount(durationInFrames: number, fps: number): number {
   const framesPerChunk = Math.max(1, Math.round(CHUNK_TARGET_SECONDS * fps));
