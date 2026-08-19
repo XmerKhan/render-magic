@@ -234,7 +234,10 @@ async function main() {
   timings.metadataMs = Date.now() - metadataStartedAt;
   const [frameFrom, frameTo] = claimed.frameRange;
   const concurrency = chooseConcurrency();
-  const offthreadVideoThreads = 2;
+  // Each Remotion renderer already uses Chromium/media work. Keep one
+  // OffthreadVideo decode thread per renderer so two renderers on the 4-vCPU
+  // GitHub runner do not oversubscribe the VM and stall.
+  const offthreadVideoThreads = 1;
   const offthreadVideoCacheSizeInBytes = 4 * 1024 ** 3;
 
   console.log(`Rendering ${composition.width}x${composition.height} @ ${composition.fps}fps, frames ${frameFrom}-${frameTo}`);
