@@ -33,12 +33,13 @@ jobs:
   render:
     needs: prepare
     runs-on: ubuntu-24.04
-    # GitHub-hosted jobs can run for up to 6 hours. Keep a slow chunk alive
-    # for up to 5 hours while completed chunks remain checkpointed independently.
     timeout-minutes: 300
     strategy:
       fail-fast: false
-      max-parallel: 8
+      # Four concurrent GitHub runners is the safer farm level. Each runner
+      # itself renders with concurrency=2, so this avoids hammering the app/
+      # Supabase callback endpoint with too many simultaneous heartbeats.
+      max-parallel: 4
       matrix:
         chunk_index: ${{ fromJson(needs.prepare.outputs.chunks) }}
     steps:
@@ -80,9 +81,6 @@ jobs:
           CHUNK_INDEX: ${{ matrix.chunk_index }}
           CHUNK_COUNT: ${{ inputs.chunk_count }}
           MAX_CHUNK_ATTEMPTS: 3
-          # Keep two render processes on the 4-vCPU GitHub runner. Each process
-          # also uses browser/media work, so four processes previously caused
-          # CPU oversubscription and long stalls/crashes.
           RENDER_CONCURRENCY: 2
         run: |
           for attempt in 1 2 3; do
