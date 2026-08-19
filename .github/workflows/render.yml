@@ -36,10 +36,10 @@ jobs:
     timeout-minutes: 300
     strategy:
       fail-fast: false
-      # Four concurrent GitHub runners is the safer farm level. Each runner
-      # itself renders with concurrency=2, so this avoids hammering the app/
-      # Supabase callback endpoint with too many simultaneous heartbeats.
-      max-parallel: 4
+      # Keep two runners active. Each runner renders with concurrency=2, so
+      # four Remotion renderers run at once without saturating the callback/
+      # Supabase endpoint or starving the Node heartbeat loop.
+      max-parallel: 2
       matrix:
         chunk_index: ${{ fromJson(needs.prepare.outputs.chunks) }}
     steps:
