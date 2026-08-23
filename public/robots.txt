@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /editor
-
-Sitemap: https://autoeditors.lovable.app/sitemap.xml
