@@ -1,7 +1,7 @@
 /* eslint-disable */
 // @ts-nocheck
 // noinspection JSUnusedGlobalSymbols
-// This file is generated from src/routes. Keep it in sync until the router plugin regenerates it.
+// Generated route tree snapshot; the TanStack Router plugin regenerates this during builds.
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EditorRouteImport } from './routes/editor'
@@ -13,6 +13,7 @@ import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
 import { Route as BlogRouteImport } from './routes/blog'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as SitemapXmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ApiPublicRenderWorkerRouteImport } from './routes/api/public/render-worker'
@@ -27,7 +28,8 @@ const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({ id: '/privacy-polic
 const TermsRoute = TermsRouteImport.update({ id: '/terms', path: '/terms', getParentRoute: () => rootRouteImport } as any)
 const CookiePolicyRoute = CookiePolicyRouteImport.update({ id: '/cookie-policy', path: '/cookie-policy', getParentRoute: () => rootRouteImport } as any)
 const BlogRoute = BlogRouteImport.update({ id: '/blog', path: '/blog', getParentRoute: () => rootRouteImport } as any)
-const BlogSlugRoute = BlogSlugRouteImport.update({ id: '/blog/$slug', path: '/blog/$slug', getParentRoute: () => rootRouteImport } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({ id: '/blog/', path: '/', getParentRoute: () => BlogRoute } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({ id: '/blog/$slug', path: '/$slug', getParentRoute: () => BlogRoute } as any)
 const SitemapXmlRoute = SitemapXmlRouteImport.update({ id: '/sitemap.xml', path: '/sitemap.xml', getParentRoute: () => rootRouteImport } as any)
 const ApiPublicRenderWorkerRoute = ApiPublicRenderWorkerRouteImport.update({ id: '/api/public/render-worker', path: '/api/public/render-worker', getParentRoute: () => rootRouteImport } as any)
 
@@ -41,7 +43,7 @@ export interface FileRoutesByFullPath {
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms': typeof TermsRoute
   '/cookie-policy': typeof CookiePolicyRoute
-  '/blog': typeof BlogRoute
+  '/blog': typeof BlogIndexRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/sitemap.xml': typeof SitemapXmlRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
@@ -58,7 +60,7 @@ export interface FileRoutesById {
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/terms': typeof TermsRoute
   '/cookie-policy': typeof CookiePolicyRoute
-  '/blog': typeof BlogRoute
+  '/blog/': typeof BlogIndexRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/sitemap.xml': typeof SitemapXmlRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
@@ -82,32 +84,11 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
   BlogRoute: typeof BlogRoute
-  BlogSlugRoute: typeof BlogSlugRoute
   SitemapXmlRoute: typeof SitemapXmlRoute
   ApiPublicRenderWorkerRoute: typeof ApiPublicRenderWorkerRoute
 }
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute,
-  EditorRoute,
-  FeaturesRoute,
-  HowItWorksRoute,
-  AboutRoute,
-  ContactRoute,
-  PrivacyPolicyRoute,
-  TermsRoute,
-  CookiePolicyRoute,
-  BlogRoute,
-  BlogSlugRoute,
-  SitemapXmlRoute,
-  ApiPublicRenderWorkerRoute,
-}
-export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
+const rootRouteChildren: RootRouteChildren = { IndexRoute, EditorRoute, FeaturesRoute, HowItWorksRoute, AboutRoute, ContactRoute, PrivacyPolicyRoute, TermsRoute, CookiePolicyRoute, BlogRoute, SitemapXmlRoute, ApiPublicRenderWorkerRoute }
+export const routeTree = rootRouteImport._addFileChildren({ ...rootRouteChildren, BlogRoute: BlogRoute._addFileChildren({ BlogIndexRoute, BlogSlugRoute }) })._addFileTypes<FileRouteTypes>()
 import type { getRouter } from './router.tsx'
 import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
+declare module '@tanstack/react-start' { interface Register { ssr: true; router: Awaited<ReturnType<typeof getRouter>>; config: Awaited<ReturnType<typeof startInstance.getOptions>> } }
