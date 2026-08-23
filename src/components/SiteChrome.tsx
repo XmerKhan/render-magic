@@ -2,47 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Film, Github, Mail } from "lucide-react";
 import { site } from "@/lib/site";
 
-export function SiteHeader() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2.5" aria-label={site.name}>
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-zinc-950"><Film className="h-5 w-5" /></span>
-          <span className="font-bold tracking-tight text-white">{site.name}</span>
-        </Link>
-        <nav className="hidden items-center gap-6 text-sm text-zinc-400 md:flex">
-          <Link to="/features" className="transition hover:text-white">Features</Link>
-          <Link to="/how-it-works" className="transition hover:text-white">How it works</Link>
-          <Link to="/blog" className="transition hover:text-white">Blog</Link>
-          <Link to="/about" className="transition hover:text-white">About</Link>
-        </nav>
-        <Link to="/editor" className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400">Open editor <ArrowRight className="h-4 w-4" /></Link>
-      </div>
-    </header>
-  );
-}
-
-export function SiteFooter() {
-  return (
-    <footer className="border-t border-zinc-800 bg-zinc-950">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4">
-        <div className="md:col-span-2">
-          <Link to="/" className="flex items-center gap-2 font-bold text-white"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-zinc-950"><Film className="h-4 w-4" /></span>{site.name}</Link>
-          <p className="mt-4 max-w-md text-sm leading-6 text-zinc-500">{site.description}</p>
-          <a href={`mailto:${site.contactEmail ?? "hello@example.com"}`} className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white"><Mail className="h-4 w-4" /> Contact</a>
-        </div>
-        <div><h2 className="text-sm font-semibold text-white">Product</h2><div className="mt-4 grid gap-3 text-sm text-zinc-500"><Link to="/editor" className="hover:text-white">Editor</Link><Link to="/features" className="hover:text-white">Features</Link><Link to="/how-it-works" className="hover:text-white">How it works</Link><Link to="/contact" className="hover:text-white">Contact</Link></div></div>
-        <div><h2 className="text-sm font-semibold text-white">Resources</h2><div className="mt-4 grid gap-3 text-sm text-zinc-500"><Link to="/blog" className="hover:text-white">Blog</Link><Link to="/privacy-policy" className="hover:text-white">Privacy</Link><Link to="/terms" className="hover:text-white">Terms</Link><Link to="/cookie-policy" className="hover:text-white">Cookies</Link></div></div>
-      </div>
-      <div className="border-t border-zinc-900"><div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-5 text-xs text-zinc-600 sm:px-6 sm:flex-row sm:items-center sm:justify-between"><span>© {new Date().getFullYear()} {site.name}. All rights reserved.</span><a href="https://github.com/XmerKhan/render-magic" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-zinc-300"><Github className="h-3.5 w-3.5" /> Source repository</a></div></div>
-    </footer>
-  );
-}
-
-export function MarketingLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-zinc-950 text-zinc-100"><SiteHeader /><main>{children}</main><SiteFooter /></div>;
-}
-
-export function SectionTitle({ eyebrow, title, description }: { eyebrow?: string; title: string; description?: string }) {
-  return <div className="mx-auto max-w-3xl text-center">{eyebrow && <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-400">{eyebrow}</p>}<h1 className="mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">{title}</h1>{description && <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-zinc-400">{description}</p>}</div>;
-}
+export function SiteHeader() { return <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"><Link to="/" className="flex items-center gap-2.5" aria-label={site.name}><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-zinc-950"><Film className="h-5 w-5" /></span><span className="font-bold tracking-tight text-white">{site.name}</span></Link><nav className="hidden items-center gap-6 text-sm text-zinc-400 md:flex"><Link to="/features" className="transition hover:text-white">Features</Link><Link to="/how-it-works" className="transition hover:text-white">How it works</Link><Link to="/blog" className="transition hover:text-white">Blog</Link><Link to="/about" className="transition hover:text-white">About</Link></nav><Link to="/editor" className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400">Open editor <ArrowRight className="h-4 w-4" /></Link></div></header>; }
+export function SiteFooter() { return <footer className="border-t border-zinc-800 bg-zinc-950"><div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4"><div className="md:col-span-2"><Link to="/" className="flex items-center gap-2 font-bold text-white"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-zinc-950"><Film className="h-4 w-4" /></span>{site.name}</Link><p className="mt-4 max-w-md text-sm leading-6 text-zinc-500">{site.description}</p>{site.contactEmail && <a href={`mailto:${site.contactEmail}`} className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white"><Mail className="h-4 w-4" /> Contact</a>}</div><div><h2 className="text-sm font-semibold text-white">Product</h2><div className="mt-4 grid gap-3 text-sm text-zinc-500"><Link to="/editor" className="hover:text-white">Editor</Link><Link to="/features" className="hover:text-white">Features</Link><Link to="/how-it-works" className="hover:text-white">How it works</Link><Link to="/contact" className="hover:text-white">Contact</Link></div></div><div><h2 className="text-sm font-semibold text-white">Resources</h2><div className="mt-4 grid gap-3 text-sm text-zinc-500"><Link to="/blog" className="hover:text-white">Blog</Link><Link to="/privacy-policy" className="hover:text-white">Privacy</Link><Link to="/terms" className="hover:text-white">Terms</Link><Link to="/cookie-policy" className="hover:text-white">Cookies</Link></div></div></div><div className="border-t border-zinc-900"><div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-5 text-xs text-zinc-600 sm:px-6 sm:flex-row sm:items-center sm:justify-between"><span>© {new Date().getFullYear()} {site.name}. All rights reserved.</span><a href="https://github.com/XmerKhan/render-magic" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-zinc-300"><Github className="h-3.5 w-3.5" /> Source repository</a></div></div></footer>; }
+export function MarketingLayout({ children }: { children: React.ReactNode }) { return <div className="min-h-screen bg-zinc-950 text-zinc-100"><SiteHeader /><main>{children}</main><SiteFooter /></div>; }
+export function SectionTitle({ eyebrow, title, description }: { eyebrow?: string; title: string; description?: string }) { return <div className="mx-auto max-w-3xl text-center">{eyebrow && <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-400">{eyebrow}</p>}<h1 className="mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">{title}</h1>{description && <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-zinc-400">{description}</p>}</div>; }
