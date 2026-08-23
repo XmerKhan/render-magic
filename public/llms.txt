@@ -1,0 +1,27 @@
+# Auto Edit
+
+Auto Edit is a browser-based video editor for narration-led creator videos.
+
+## Product
+- Editor: /editor
+- Features: /features
+- How it works: /how-it-works
+- About: /about
+- Blog: /blog
+
+## Core capabilities
+- Script-driven scene timing using JSON or SRT data
+- Images and video clips
+- Ken Burns motion for still images
+- Transition packs and scene-level transition controls
+- Captions: fade, slide, typewriter and karaoke
+- Background music, auto-ducking, loudness normalization and voice fades
+- Color grading presets and manual controls
+- Aspect ratios: 16:9, 9:16, 1:1 and 4:5
+- MP4 export at 720p, 1080p and 4K
+
+## Documentation
+The blog contains practical guides about online editing, captions, transitions, audio, YouTube, Shorts, TikTok and export dimensions.
+
+## Source
+https://github.com/XmerKhan/render-magic
