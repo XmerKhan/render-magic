@@ -16,8 +16,8 @@ import { Route as BlogRouteImport } from './routes/blog'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as SitemapXmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RobotsTxtRouteImport } from './routes/robots[.]txt'
 import { Route as ApiPublicRenderWorkerRouteImport } from './routes/api/public/render-worker'
-
 const IndexRoute = IndexRouteImport.update({ id: '/', path: '/', getParentRoute: () => rootRouteImport } as any)
 const EditorRoute = EditorRouteImport.update({ id: '/editor', path: '/editor', getParentRoute: () => rootRouteImport } as any)
 const FeaturesRoute = FeaturesRouteImport.update({ id: '/features', path: '/features', getParentRoute: () => rootRouteImport } as any)
@@ -31,63 +31,14 @@ const BlogRoute = BlogRouteImport.update({ id: '/blog', path: '/blog', getParent
 const BlogIndexRoute = BlogIndexRouteImport.update({ id: '/blog/', path: '/', getParentRoute: () => BlogRoute } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({ id: '/blog/$slug', path: '/$slug', getParentRoute: () => BlogRoute } as any)
 const SitemapXmlRoute = SitemapXmlRouteImport.update({ id: '/sitemap.xml', path: '/sitemap.xml', getParentRoute: () => rootRouteImport } as any)
+const RobotsTxtRoute = RobotsTxtRouteImport.update({ id: '/robots.txt', path: '/robots.txt', getParentRoute: () => rootRouteImport } as any)
 const ApiPublicRenderWorkerRoute = ApiPublicRenderWorkerRouteImport.update({ id: '/api/public/render-worker', path: '/api/public/render-worker', getParentRoute: () => rootRouteImport } as any)
-
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/editor': typeof EditorRoute
-  '/features': typeof FeaturesRoute
-  '/how-it-works': typeof HowItWorksRoute
-  '/about': typeof AboutRoute
-  '/contact': typeof ContactRoute
-  '/privacy-policy': typeof PrivacyPolicyRoute
-  '/terms': typeof TermsRoute
-  '/cookie-policy': typeof CookiePolicyRoute
-  '/blog': typeof BlogIndexRoute
-  '/blog/$slug': typeof BlogSlugRoute
-  '/sitemap.xml': typeof SitemapXmlRoute
-  '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
-}
+export interface FileRoutesByFullPath { '/': typeof IndexRoute; '/editor': typeof EditorRoute; '/features': typeof FeaturesRoute; '/how-it-works': typeof HowItWorksRoute; '/about': typeof AboutRoute; '/contact': typeof ContactRoute; '/privacy-policy': typeof PrivacyPolicyRoute; '/terms': typeof TermsRoute; '/cookie-policy': typeof CookiePolicyRoute; '/blog': typeof BlogIndexRoute; '/blog/$slug': typeof BlogSlugRoute; '/sitemap.xml': typeof SitemapXmlRoute; '/robots.txt': typeof RobotsTxtRoute; '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute }
 export interface FileRoutesByTo extends FileRoutesByFullPath {}
-export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/editor': typeof EditorRoute
-  '/features': typeof FeaturesRoute
-  '/how-it-works': typeof HowItWorksRoute
-  '/about': typeof AboutRoute
-  '/contact': typeof ContactRoute
-  '/privacy-policy': typeof PrivacyPolicyRoute
-  '/terms': typeof TermsRoute
-  '/cookie-policy': typeof CookiePolicyRoute
-  '/blog/': typeof BlogIndexRoute
-  '/blog/$slug': typeof BlogSlugRoute
-  '/sitemap.xml': typeof SitemapXmlRoute
-  '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
-}
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: keyof FileRoutesByFullPath
-  fileRoutesByTo: FileRoutesByTo
-  to: keyof FileRoutesByFullPath
-  id: '__root__' | keyof FileRoutesById
-  fileRoutesById: FileRoutesById
-}
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  EditorRoute: typeof EditorRoute
-  FeaturesRoute: typeof FeaturesRoute
-  HowItWorksRoute: typeof HowItWorksRoute
-  AboutRoute: typeof AboutRoute
-  ContactRoute: typeof ContactRoute
-  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
-  TermsRoute: typeof TermsRoute
-  CookiePolicyRoute: typeof CookiePolicyRoute
-  BlogRoute: typeof BlogRoute
-  SitemapXmlRoute: typeof SitemapXmlRoute
-  ApiPublicRenderWorkerRoute: typeof ApiPublicRenderWorkerRoute
-}
-const rootRouteChildren: RootRouteChildren = { IndexRoute, EditorRoute, FeaturesRoute, HowItWorksRoute, AboutRoute, ContactRoute, PrivacyPolicyRoute, TermsRoute, CookiePolicyRoute, BlogRoute, SitemapXmlRoute, ApiPublicRenderWorkerRoute }
+export interface FileRoutesById { __root__: typeof rootRouteImport; '/': typeof IndexRoute; '/editor': typeof EditorRoute; '/features': typeof FeaturesRoute; '/how-it-works': typeof HowItWorksRoute; '/about': typeof AboutRoute; '/contact': typeof ContactRoute; '/privacy-policy': typeof PrivacyPolicyRoute; '/terms': typeof TermsRoute; '/cookie-policy': typeof CookiePolicyRoute; '/blog/': typeof BlogIndexRoute; '/blog/$slug': typeof BlogSlugRoute; '/sitemap.xml': typeof SitemapXmlRoute; '/robots.txt': typeof RobotsTxtRoute; '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute }
+export interface FileRouteTypes { fileRoutesByFullPath: FileRoutesByFullPath; fullPaths: keyof FileRoutesByFullPath; fileRoutesByTo: FileRoutesByTo; to: keyof FileRoutesByFullPath; id: '__root__' | keyof FileRoutesById; fileRoutesById: FileRoutesById }
+export interface RootRouteChildren { IndexRoute: typeof IndexRoute; EditorRoute: typeof EditorRoute; FeaturesRoute: typeof FeaturesRoute; HowItWorksRoute: typeof HowItWorksRoute; AboutRoute: typeof AboutRoute; ContactRoute: typeof ContactRoute; PrivacyPolicyRoute: typeof PrivacyPolicyRoute; TermsRoute: typeof TermsRoute; CookiePolicyRoute: typeof CookiePolicyRoute; BlogRoute: typeof BlogRoute; SitemapXmlRoute: typeof SitemapXmlRoute; RobotsTxtRoute: typeof RobotsTxtRoute; ApiPublicRenderWorkerRoute: typeof ApiPublicRenderWorkerRoute }
+const rootRouteChildren: RootRouteChildren = { IndexRoute, EditorRoute, FeaturesRoute, HowItWorksRoute, AboutRoute, ContactRoute, PrivacyPolicyRoute, TermsRoute, CookiePolicyRoute, BlogRoute, SitemapXmlRoute, RobotsTxtRoute, ApiPublicRenderWorkerRoute }
 export const routeTree = rootRouteImport._addFileChildren({ ...rootRouteChildren, BlogRoute: BlogRoute._addFileChildren({ BlogIndexRoute, BlogSlugRoute }) })._addFileTypes<FileRouteTypes>()
 import type { getRouter } from './router.tsx'
 import type { startInstance } from './start.ts'
