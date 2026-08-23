@@ -67,7 +67,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Cache Chrome Headless Shell
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: render-worker/node_modules/.remotion
           key: chrome-headless-shell-${{ hashFiles('render-worker/package-lock.json', 'render-worker/package.json') }}
