@@ -69,8 +69,12 @@ const CaptionText: React.FC<{
   const activeWord = style === 'karaoke' ? Math.floor(words.length * wordProgress) : -1;
 
   const isPortrait = settings.aspectRatio === '9:16' || settings.aspectRatio === '4:5';
+  // The UI calls this position "Bottom". Keep the existing internal
+  // lower-third value for backwards compatibility with saved projects, but
+  // place captions close to the bottom edge rather than at the traditional
+  // lower-third height.
   const positionPadding = position === 'lower-third'
-    ? isPortrait ? '0 8% 22% 8%' : '0 8% 18% 8%'
+    ? isPortrait ? '0 8% 6% 8%' : '0 8% 5% 8%'
     : position === 'top'
       ? isPortrait ? '14% 8% 0 8%' : '12% 8% 0 8%'
       : '0 8%';
