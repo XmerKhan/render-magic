@@ -22,59 +22,91 @@ export interface VoiceSyncResult {
 }
 
 function normalizeWord(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[’']/g, '')
-    .replace(/[^a-z0-9]+/g, '');
+  return value.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, '');
 }
 
 function tokenize(value: string): string[] {
-  return value
-    .split(/\s+/)
-    .map(normalizeWord)
-    .filter(Boolean);
+  return value.split(/\s+/).map(normalizeWord).filter(Boolean);
 }
 
 function similarity(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 1;
-  if (a.length < 3 || b.length < 3) return 0;
-  let common = 0;
-  const used = new Set<number>();
-  for (const char of a) {
-    const index = b.indexOf(char);
-    if (index >= 0 && !used.has(index)) {
-      used.add(index);
-      common++;
+  if (a.length < 2 || b.length < 2) return 0;
+  if (a.includes(b) || b.includes(a)) return Math.min(a.length, b.length) / Math.max(a.length, b.length);
+  const matrix = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  );
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      matrix[i]![j] = Math.min(
+        matrix[i - 1]![j]! + 1,
+        matrix[i]![j - 1]! + 1,
+        matrix[i - 1]![j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
     }
   }
-  return (2 * common) / (a.length + b.length);
+  return Math.max(0, 1 - matrix[a.length]![b.length]! / Math.max(a.length, b.length));
 }
 
-function lineScore(scriptWords: string[], transcriptWords: string[], start: number): number {
-  if (start < 0 || start >= transcriptWords.length || scriptWords.length === 0) return 0;
-  const span = Math.max(1, Math.round(scriptWords.length * 1.25));
-  const end = Math.min(transcriptWords.length, start + span);
-  const window = transcriptWords.slice(start, end);
-  if (window.length === 0) return 0;
+function scoreSpan(scriptWords: string[], transcriptWords: string[], start: number, endExclusive: number): number {
+  const span = transcriptWords.slice(start, endExclusive);
+  if (!span.length) return 0;
+  const n = Math.min(scriptWords.length, span.length);
+  let aligned = 0;
+  for (let i = 0; i < n; i++) aligned += similarity(scriptWords[i]!, span[i]!);
+  const alignedScore = aligned / Math.max(1, scriptWords.length);
+  const lengthRatio = Math.min(span.length, scriptWords.length) / Math.max(span.length, scriptWords.length);
 
-  let matched = 0;
+  // Also reward words that occur anywhere in the candidate span. This handles
+  // small ASR insertions/deletions without allowing the matcher to jump ahead.
+  let bagScore = 0;
   for (const word of scriptWords) {
     let best = 0;
-    for (const candidate of window) best = Math.max(best, similarity(word, candidate));
-    matched += best;
+    for (const candidate of span) best = Math.max(best, similarity(word, candidate));
+    bagScore += best;
   }
-  const coverage = matched / scriptWords.length;
-  const lengthPenalty = Math.min(1, Math.abs(window.length - scriptWords.length) / Math.max(4, scriptWords.length));
-  return coverage * (1 - lengthPenalty * 0.15);
+  bagScore /= Math.max(1, scriptWords.length);
+  return alignedScore * 0.7 + bagScore * 0.2 + lengthRatio * 0.1;
 }
 
-/**
- * Aligns already-timestamped transcript words to ordered script lines.
- * The algorithm is intentionally monotonic: a later script line can never
- * consume words belonging to an earlier line. Low-confidence matches are
- * reported instead of silently producing misleading timestamps.
- */
+function findBestSpan(
+  scriptWords: string[],
+  transcriptWords: string[],
+  cursor: number,
+  maxStart: number,
+  minimumWordsAfter: number,
+): { start: number; endExclusive: number; score: number } {
+  let best = { start: cursor, endExclusive: Math.min(transcriptWords.length, cursor + scriptWords.length), score: -1 };
+  const minLen = Math.max(1, Math.floor(scriptWords.length * 0.65));
+  const maxLen = Math.min(
+    transcriptWords.length - cursor - minimumWordsAfter,
+    Math.max(minLen, Math.ceil(scriptWords.length * 1.45)),
+  );
+  if (maxLen < minLen) return best;
+
+  for (let start = cursor; start <= maxStart; start++) {
+    // Exact contiguous match gets priority and avoids common-word ambiguity.
+    if (scriptWords.length <= transcriptWords.length - start) {
+      let exact = true;
+      for (let i = 0; i < scriptWords.length; i++) {
+        if (scriptWords[i] !== transcriptWords[start + i]) {
+          exact = false;
+          break;
+        }
+      }
+      if (exact) return { start, endExclusive: start + scriptWords.length, score: 1 };
+    }
+
+    for (let length = minLen; length <= maxLen; length++) {
+      const endExclusive = start + length;
+      const score = scoreSpan(scriptWords, transcriptWords, start, endExclusive);
+      if (score > best.score) best = { start, endExclusive, score };
+    }
+  }
+  return best;
+}
+
 export function alignScriptToTranscript(
   scriptLines: string[],
   transcript: TranscriptWord[],
@@ -86,81 +118,50 @@ export function alignScriptToTranscript(
     .map((item) => ({ ...item, word: normalizeWord(item.word) }))
     .filter((item) => item.word);
 
-  if (cleanScript.length === 0) throw new Error('The original script contains no usable lines.');
-  if (words.length === 0) throw new Error('The transcript contains no timestamped words. Upload a word-timestamp transcript.');
+  if (!cleanScript.length) throw new Error('The original script contains no usable lines.');
+  if (!words.length) throw new Error('The transcript contains no timestamped words. Upload a word-timestamp transcript.');
   if (mediaIds.length < cleanScript.length) {
-    throw new Error(`There are ${cleanScript.length} script lines but only ${mediaIds.length} scene media files. Upload at least one media asset per script line.`);
+    throw new Error(`There are ${cleanScript.length} script lines but only ${mediaIds.length} scene media files.`);
   }
 
   const transcriptWords = words.map((item) => item.word);
-  const lines: VoiceSyncLine[] = [];
-  const warnings: string[] = [];
+  const matches: { start: number; endExclusive: number; score: number }[] = [];
   let cursor = 0;
+  const warnings: string[] = [];
 
-  cleanScript.forEach((text, lineIndex) => {
-    const scriptWords = tokenize(text);
-    if (scriptWords.length === 0) return;
+  for (let i = 0; i < cleanScript.length; i++) {
+    const scriptWords = tokenize(cleanScript[i]!);
+    const remainingLines = cleanScript.length - i - 1;
+    const maxStart = transcriptWords.length - Math.max(1, remainingLines + 1);
+    const match = findBestSpan(scriptWords, transcriptWords, cursor, Math.max(cursor, maxStart), remainingLines);
 
-    const remainingLines = cleanScript.length - lineIndex - 1;
-    const latestStart = transcriptWords.length - Math.max(1, remainingLines + 1);
-    let bestStart = cursor;
-    let bestScore = -1;
-
-    for (let start = cursor; start <= latestStart; start++) {
-      const score = lineScore(scriptWords, transcriptWords, start);
-      if (score > bestScore) {
-        bestScore = score;
-        bestStart = start;
-      }
-      if (bestScore >= 0.985) break;
+    if (match.endExclusive <= match.start || match.endExclusive > transcriptWords.length) {
+      throw new Error(`Unable to align script scene ${i + 1}. Check that the transcript contains the same narration words in the same order.`);
     }
-
-    const nextCursor = lineIndex === cleanScript.length - 1
-      ? words.length
-      : (() => {
-          const searchFrom = Math.max(bestStart + Math.max(1, scriptWords.length - 2), bestStart + 1);
-          const nextScriptWords = tokenize(cleanScript[lineIndex + 1] ?? '');
-          let nextBest = Math.min(words.length - 1, searchFrom);
-          let nextScore = -1;
-          for (let start = searchFrom; start < words.length; start++) {
-            const score = lineScore(nextScriptWords, transcriptWords, start);
-            if (score > nextScore) {
-              nextScore = score;
-              nextBest = start;
-            }
-            if (nextScore >= 0.985) break;
-          }
-          return Math.max(bestStart + 1, nextBest);
-        })();
-
-    const startTime = words[bestStart]?.startTime ?? 0;
-    const nextStartTime = words[Math.min(nextCursor, words.length - 1)]?.startTime;
-    const endTime = lineIndex === cleanScript.length - 1
-      ? Math.max(startTime, words[words.length - 1]?.endTime ?? startTime)
-      : Math.max(startTime + 1 / 1000, nextStartTime ?? startTime);
-
-    const confidence = Math.max(0, Math.min(1, bestScore));
-    if (confidence < 0.72) {
-      warnings.push(`Scene ${lineIndex + 1} has a low transcript match confidence (${Math.round(confidence * 100)}%). Review this line before rendering.`);
+    if (match.score < 0.72) {
+      warnings.push(`Scene ${i + 1} has a low transcript match confidence (${Math.round(match.score * 100)}%). Review this scene before rendering.`);
     }
-    if (nextCursor <= bestStart) {
-      throw new Error(`Unable to keep transcript order at script line ${lineIndex + 1}. The transcript and script appear inconsistent.`);
-    }
-
-    lines.push({
-      sceneId: `scene${lineIndex + 1}`,
-      text,
-      startTime,
-      endTime,
-      confidence,
-    });
-    cursor = nextCursor;
-  });
-
-  if (lines.length !== cleanScript.length) {
-    throw new Error(`Only ${lines.length} of ${cleanScript.length} script lines could be aligned.`);
+    matches.push(match);
+    cursor = match.endExclusive;
   }
 
+  const lines: VoiceSyncLine[] = matches.map((match, index) => {
+    const next = matches[index + 1];
+    const startTime = words[match.start]!.startTime;
+    const endTime = next
+      ? Math.max(startTime + 0.001, words[next.start]!.startTime)
+      : Math.max(startTime + 0.001, words[match.endExclusive - 1]!.endTime);
+    return {
+      sceneId: `scene${index + 1}`,
+      text: cleanScript[index]!,
+      startTime,
+      endTime,
+      confidence: match.score,
+    };
+  });
+
+  // Timeline semantics are intentionally gap-free: if narration pauses between
+  // lines, the previous scene remains on screen until the next line starts.
   const segments: ScriptSegment[] = lines.map((line, index) => ({
     sceneId: line.sceneId,
     mediaId: mediaIds[index]!,
@@ -169,12 +170,51 @@ export function alignScriptToTranscript(
     text: line.text,
   }));
 
-  const confidence = lines.reduce((sum, line) => sum + line.confidence, 0) / Math.max(1, lines.length);
-  if (confidence < 0.85) {
-    warnings.push(`Overall script/transcript confidence is ${Math.round(confidence * 100)}%. The timeline was created, but review the flagged lines before rendering.`);
+  const confidence = lines.reduce((sum, line) => sum + line.confidence, 0) / lines.length;
+  if (confidence < 0.85) warnings.push(`Overall script/transcript confidence is ${Math.round(confidence * 100)}%. Review the flagged lines before rendering.`);
+  return { segments, lines, confidence, warnings };
+}
+
+export function parseOriginalScript(content: string): string[] {
+  const trimmed = content.trim();
+  if (!trimmed) throw new Error('Original script file is empty.');
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    const parsed = JSON.parse(trimmed) as unknown;
+    const raw = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === 'object'
+        ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).segments ?? (parsed as Record<string, unknown>).lines ?? [])
+        : [];
+    if (!Array.isArray(raw)) throw new Error('Script JSON must contain a scenes, segments, lines, or array structure.');
+    const lines = raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).text ?? '')).map((s) => s.trim()).filter(Boolean);
+    if (!lines.length) throw new Error('Script JSON contains no usable scene lines.');
+    return lines;
   }
 
-  return { segments, lines, confidence, warnings };
+  const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    .map((line) => line.replace(/^scene\s*\d+\s*[:.)-]\s*/i, '').trim()).filter(Boolean);
+  if (!lines.length) throw new Error('Original script contains no usable lines.');
+  return lines;
+}
+
+export function parseSceneOrder(content: string): string[] {
+  const trimmed = content.trim();
+  if (!trimmed) throw new Error('Scene order file is empty.');
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    const parsed = JSON.parse(trimmed) as unknown;
+    const raw = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === 'object'
+        ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).order ?? (parsed as Record<string, unknown>).media ?? [])
+        : [];
+    if (!Array.isArray(raw)) throw new Error('Scene order JSON must contain a scenes, order, media, or array structure.');
+    return raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).mediaId ?? (item as Record<string, unknown>).file ?? (item as Record<string, unknown>).filename ?? '')).map((s) => s.trim()).filter(Boolean);
+  }
+
+  return trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    .map((line) => line.replace(/^scene\s*\d+\s*[:.)-]\s*/i, '').trim()).filter(Boolean);
 }
 
 export function parseTimestampedTranscript(content: string): TranscriptWord[] {
@@ -191,57 +231,40 @@ export function parseTimestampedTranscript(content: string): TranscriptWord[] {
     if (!Array.isArray(raw)) throw new Error('Transcript JSON must contain a words array.');
     const result = raw.map((item) => {
       const value = item as Record<string, unknown>;
-      return {
-        word: String(value.word ?? value.text ?? ''),
-        startTime: Number(value.startTime ?? value.start ?? value.start_sec ?? 0),
-        endTime: Number(value.endTime ?? value.end ?? value.end_sec ?? value.startTime ?? value.start ?? 0),
-      };
+      const start = Number(value.startTime ?? value.start ?? value.start_sec ?? 0);
+      const end = Number(value.endTime ?? value.end ?? value.end_sec ?? start);
+      return { word: String(value.word ?? value.text ?? ''), startTime: start, endTime: end };
     });
-    if (result.length === 0) throw new Error('Transcript JSON contains no words.');
+    if (!result.length) throw new Error('Transcript JSON contains no words.');
     return result;
   }
 
-  // Supports common line formats such as:
-  // [00:01.230 --> 00:01.600] hello
-  // 00:01.230\t00:01.600\thello
-  // 1.230 1.600 hello
   const result: TranscriptWord[] = [];
   for (const rawLine of trimmed.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line) continue;
-    const match = line.match(/(?:\[)?(\d{1,2}):(\d{2})(?:[.:](\d{3}))?(?:\s*[-–>]+\s*(\d{1,2}):(\d{2})(?:[.:](\d{3}))?)?[\]\s\t]+(.+)/);
+    const match = line.match(/^\s*\[?(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\s*(?:-->|[-–])\s*(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]?\s+(.+)$/);
     if (match) {
-      const start = Number(match[1]) * 60 + Number(match[2]) + Number(`0.${match[3] ?? '0'}`);
-      const end = match[5]
-        ? Number(match[5]) * 60 + Number(match[6]) + Number(`0.${match[7] ?? '0'}`)
-        : start;
-      const text = match[8].trim();
-      const parts = text.split(/\s+/).filter(Boolean);
+      const ms = (match[3] ?? '0').padEnd(3, '0').slice(0, 3);
+      const ems = (match[6] ?? '0').padEnd(3, '0').slice(0, 3);
+      const start = Number(match[1]) * 60 + Number(match[2]) + Number(ms) / 1000;
+      const end = Number(match[4]) * 60 + Number(match[5]) + Number(ems) / 1000;
+      const parts = match[7]!.trim().split(/\s+/).filter(Boolean);
       const duration = Math.max(0, end - start);
-      parts.forEach((word, index) => {
-        const partStart = start + duration * (index / Math.max(1, parts.length));
-        const partEnd = start + duration * ((index + 1) / Math.max(1, parts.length));
-        result.push({ word, startTime: partStart, endTime: partEnd });
-      });
+      parts.forEach((word, index) => result.push({ word, startTime: start + duration * index / parts.length, endTime: start + duration * (index + 1) / parts.length }));
       continue;
     }
 
-    const simple = line.match(/^(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(.+)$/);
-    if (simple) {
-      const start = Number(simple[1]);
-      const end = Number(simple[2]);
-      const parts = simple[3].trim().split(/\s+/).filter(Boolean);
+    const tabbed = line.match(/^(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(.+)$/);
+    if (tabbed) {
+      const start = Number(tabbed[1]);
+      const end = Number(tabbed[2]);
+      const parts = tabbed[3]!.trim().split(/\s+/).filter(Boolean);
       const duration = Math.max(0, end - start);
-      parts.forEach((word, index) => result.push({
-        word,
-        startTime: start + duration * (index / Math.max(1, parts.length)),
-        endTime: start + duration * ((index + 1) / Math.max(1, parts.length)),
-      }));
+      parts.forEach((word, index) => result.push({ word, startTime: start + duration * index / parts.length, endTime: start + duration * (index + 1) / parts.length }));
     }
   }
 
-  if (result.length === 0) {
-    throw new Error('Could not find timestamps in transcript. Plain text alone cannot determine exact scene timing; upload word-level timestamps or a timestamped transcript.');
-  }
+  if (!result.length) throw new Error('Could not find timestamps. Upload word-level timestamp JSON, VTT/SRT-style ranges, or start/end/word text.');
   return result;
 }
