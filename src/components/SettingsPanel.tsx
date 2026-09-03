@@ -20,7 +20,7 @@ const CAPTION_STYLES: { value: EditSettings['captionStyle']; label: string }[] =
   { value: 'typewriter', label: 'Typewriter' }, { value: 'karaoke', label: 'Karaoke' },
 ];
 const CAPTION_POSITIONS: { value: EditSettings['captionPosition']; label: string }[] = [
-  { value: 'lower-third', label: 'Lower Third' }, { value: 'center', label: 'Center' }, { value: 'top', label: 'Top' },
+  { value: 'lower-third', label: 'Bottom' }, { value: 'center', label: 'Center' }, { value: 'top', label: 'Top' },
 ];
 const CAPTION_FONTS: { value: CaptionFontFamily; label: string }[] = [
   { value: 'inter', label: 'Inter' }, { value: 'roboto-mono', label: 'Roboto Mono' },
@@ -134,7 +134,7 @@ export function SettingsPanel({ settings, onChange }: SettingsPanelProps) {
       <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={settings.autoDuck} onChange={(e) => update({ autoDuck: e.target.checked })} className="accent-amber-500" /><span className="text-xs text-zinc-300">Auto-duck music under voiceover</span></label>
       <div className="pt-2 border-t border-zinc-800"><p className="text-xs text-zinc-500 mb-2">Voiceover Processing</p>
         <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={settings.trimSilence} onChange={(e) => update({ trimSilence: e.target.checked })} className="accent-amber-500" /><span className="text-xs text-zinc-300">Trim leading/trailing silence</span></label>
-        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={settings.normalizeLoudness} onChange={(e) => update({ normalizeLoudness: e.target.checked })} className="accent-amber-500" /><span className="text-xs text-zinc-300">Normalize loudness (-16 LUFS)</span></label>
+        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={settings.normalizeLoudness} onChange={(e) => update({ normalizeLoudness: e.target.checked })} className="accent-amber-500" /><span className="text-xs text-zinc-300">Normalize loudness</span></label>
         <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={settings.voiceClarityBoost} onChange={(e) => update({ voiceClarityBoost: e.target.checked })} className="accent-amber-500" /><span className="text-xs text-zinc-300">Voice clarity boost</span></label>
         <Slider label="Fade In" value={settings.voiceFadeInSec} min={0} max={2} step={0.1} onChange={(v) => update({ voiceFadeInSec: v })} format={(v) => `${v.toFixed(1)}s`} />
         <Slider label="Fade Out" value={settings.voiceFadeOutSec} min={0} max={2} step={0.1} onChange={(v) => update({ voiceFadeOutSec: v })} format={(v) => `${v.toFixed(1)}s`} />
@@ -143,15 +143,25 @@ export function SettingsPanel({ settings, onChange }: SettingsPanelProps) {
 
     <Section icon={<Film className="w-4 h-4" />} title="Branding">
       <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={settings.showIntro} onChange={(e) => update({ showIntro: e.target.checked })} className="accent-amber-500" /><span className="text-xs text-zinc-300">Show intro card</span></label>
-      {settings.showIntro && <><input type="text" value={settings.introText} onChange={(e) => update({ introText: e.target.value })} placeholder="Intro title..." className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500" /><input type="text" value={settings.introSubtitle} onChange={(e) => update({ introSubtitle: e.target.value })} placeholder="Subtitle (optional)..." className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500" /><div><label className="text-xs text-zinc-400 mb-1.5 block">Animation Style</label><SegmentedControl options={INTRO_OUTRO_STYLES} value={settings.introOutroStyle} onChange={(v) => update({ introOutroStyle: v })} cols={3} /></div></>}
       <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={settings.showOutro} onChange={(e) => update({ showOutro: e.target.checked })} className="accent-amber-500" /><span className="text-xs text-zinc-300">Show outro card</span></label>
-      {settings.showOutro && <><input type="text" value={settings.outroText} onChange={(e) => update({ outroText: e.target.value })} placeholder="Outro text..." className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500" /><input type="text" value={settings.channelName} onChange={(e) => update({ channelName: e.target.value })} placeholder="Channel name..." className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500" /></>}
+      {settings.showIntro && <>
+        <input value={settings.introText} onChange={(e) => update({ introText: e.target.value })} placeholder="Intro title" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-200 placeholder:text-zinc-600" />
+        <input value={settings.introSubtitle} onChange={(e) => update({ introSubtitle: e.target.value })} placeholder="Intro subtitle" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-200 placeholder:text-zinc-600" />
+      </>}
+      {settings.showOutro && <>
+        <input value={settings.outroText} onChange={(e) => update({ outroText: e.target.value })} placeholder="Outro title" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-200 placeholder:text-zinc-600" />
+        <input value={settings.channelName} onChange={(e) => update({ channelName: e.target.value })} placeholder="Channel name" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-200 placeholder:text-zinc-600" />
+      </>}
+      <div><label className="text-xs text-zinc-400 mb-1.5 block">Card Animation</label><SegmentedControl options={INTRO_OUTRO_STYLES} value={settings.introOutroStyle} onChange={(v) => update({ introOutroStyle: v })} cols={3} /></div>
     </Section>
 
-    <Section icon={<Sliders className="w-4 h-4" />} title="Export">
-      <div><label className="text-xs text-zinc-400 mb-1.5 block">Resolution</label><SegmentedControl options={RESOLUTIONS} value={settings.exportResolution} onChange={(v) => update({ exportResolution: v })} cols={3} /></div>
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 text-xs text-zinc-400"><span>Format: MP4 (H.264)</span></div>
-      <Slider label="Frame Rate" value={settings.fps} min={24} max={60} step={6} onChange={(v) => update({ fps: v })} format={(v) => `${v}fps`} />
+    <Section icon={<Monitor className="w-4 h-4" />} title="Export">
+      <SegmentedControl options={RESOLUTIONS} value={settings.exportResolution} onChange={(v) => update({ exportResolution: v })} cols={3} />
+      <div className="grid grid-cols-2 gap-1.5">
+        <button onClick={() => update({ exportFormat: 'mp4' })} className={`px-3 py-2 rounded-lg text-xs font-medium ${settings.exportFormat === 'mp4' ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-800 text-zinc-400'}`}>MP4 (H.264)</button>
+        <button onClick={() => update({ exportFormat: 'webm' })} className={`px-3 py-2 rounded-lg text-xs font-medium ${settings.exportFormat === 'webm' ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-800 text-zinc-400'}`}>WebM (VP9)</button>
+      </div>
+      <Slider label="Frame Rate" value={settings.fps} min={24} max={60} step={1} onChange={(v) => update({ fps: v })} format={(v) => `${v}fps`} />
     </Section>
   </div>;
 }
