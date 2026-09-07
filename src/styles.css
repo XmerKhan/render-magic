@@ -4,20 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -133,12 +119,26 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
+  *, *::before, *::after { box-sizing: border-box; border-color: var(--color-border); }
+  html, body, #root { width: 100%; min-width: 0; max-width: 100%; margin: 0; }
+  html { overflow-x: hidden; }
+  body { background-color: var(--color-background); color: var(--color-foreground); overflow-x: hidden; }
+  img, video, canvas, svg { max-width: 100%; }
+  button, input, textarea, select { max-width: 100%; }
+}
 
-  body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-  }
+/* The editor has fixed desktop sidebars, so explicitly switch to a stacked
+   document flow below lg. This prevents 320–1024px layouts from creating
+   horizontal overflow while preserving the desktop composition. */
+@media (max-width: 1023px) {
+  .auto-edit-editor { min-width: 0; max-width: 100vw; }
+  .auto-edit-editor .overflow-y-auto { scrollbar-width: thin; }
+}
+
+@media (max-width: 380px) {
+  .auto-edit-editor header { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .auto-edit-editor header .w-8 { width: 1.75rem; height: 1.75rem; }
+  .auto-edit-editor header .text-sm { font-size: 0.75rem; }
+  .auto-edit-editor .max-h-\[42vh\] { max-height: 45vh; }
+  .auto-edit-editor .max-h-\[48vh\] { max-height: 52vh; }
 }
