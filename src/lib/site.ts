@@ -19,10 +19,26 @@ type MetaEntry = Record<string, string>;
 export interface PageSeoOptions { title: string; description: string; path: string; type?: "website" | "article"; image?: string; noindex?: boolean; publishedTime?: string; modifiedTime?: string; }
 export function pageSeo(options: PageSeoOptions): { meta: MetaEntry[]; links: MetaEntry[] } {
   const url = absoluteUrl(options.path); const image = options.image ?? site.socialImage;
-  const meta: MetaEntry[] = [{ title: options.title }, { name: "description", content: options.description }, { property: "og:site_name", content: site.name }, { property: "og:title", content: options.title }, { property: "og:description", content: options.description }, { property: "og:type", content: options.type ?? "website" }, { property: "og:url", content: url }, { property: "og:image", content: image }, { name: "twitter:card", content: "summary_large_image" }, { name: "twitter:title", content: options.title }, { name: "twitter:description", content: options.description }, { name: "twitter:image", content: image }];
+  const meta: MetaEntry[] = [
+    { title: options.title },
+    { name: "description", content: options.description },
+    { name: "robots", content: options.noindex ? "noindex, follow" : "index, follow, max-image-preview:large" },
+    { property: "og:site_name", content: site.name },
+    { property: "og:title", content: options.title },
+    { property: "og:description", content: options.description },
+    { property: "og:type", content: options.type ?? "website" },
+    { property: "og:url", content: url },
+    { property: "og:image", content: image },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    { property: "og:image:type", content: image.endsWith(".svg") ? "image/svg+xml" : "image/jpeg" },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: options.title },
+    { name: "twitter:description", content: options.description },
+    { name: "twitter:image", content: image },
+  ];
   if (options.publishedTime) meta.push({ property: "article:published_time", content: options.publishedTime });
   if (options.modifiedTime) meta.push({ property: "article:modified_time", content: options.modifiedTime });
-  if (options.noindex) meta.push({ name: "robots", content: "noindex, follow" });
   return { meta, links: [{ rel: "canonical", href: url }] };
 }
 export function jsonLd(data: unknown) { return { type: "application/ld+json", children: JSON.stringify(data) }; }
