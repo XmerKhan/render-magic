@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import App from "@/App";
+import { EditorGuide } from "@/components/EditorGuide";
 import { pageSeo } from "@/lib/site";
 
 export const Route = createFileRoute("/editor")({
@@ -9,5 +10,5 @@ export const Route = createFileRoute("/editor")({
     path: "/editor",
     type: "website",
   }),
-  component: App,
+  component: () => <><App /><EditorGuide /></>,
 });
