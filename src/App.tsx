@@ -108,7 +108,6 @@ export default function App() {
         const missing = mediaIds.map((id, index) => id ? '' : `Scene ${index + 1}`).filter(Boolean);
         if (missing.length) throw new Error(`These scene-order entries do not match uploaded media: ${missing.join(', ')}.`);
         const result = alignScriptToTranscript(scriptLines, transcript, mediaIds);
-        // The final visual scene stays visible through the real audio end. No blank tail.
         const final = result.segments[result.segments.length - 1];
         if (final) final.endTime = Math.max(final.endTime, voiceoverDuration);
         const syncValidation = autoValidation(result.segments, voiceoverDuration, result.warnings);
@@ -158,17 +157,17 @@ export default function App() {
     } catch (e) { setProgress({ stage: 'error', message: (e as Error).message || 'Unknown rendering error', progress: 0 }); }
   };
   const handleCancel = () => { abortRef.current?.abort(); setShowRender(false); setProgress({ stage: 'idle', message: '', progress: 0 }); };
-  const fileName = `autocut-${Date.now()}.mp4`;
+  const fileName = `autoedit-${Date.now()}.mp4`;
 
-  return <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
-    <header className="h-14 flex items-center justify-between px-4 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur shrink-0">
-      <div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center"><Film className="w-4 h-4 text-zinc-900" /></div><div><h1 className="text-sm font-bold tracking-tight">AutoCut Studio</h1><p className="text-[10px] text-zinc-500 -mt-0.5">Automatic Video Editor</p></div></div>
-      <div className="flex items-center gap-3">{validation && <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" />Generate Video</button></div>
+  return <div className="auto-edit-editor h-screen min-h-0 flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
+    <header className="min-h-14 flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur shrink-0">
+      <div className="flex items-center gap-2.5 min-w-0"><div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center"><Film className="w-4 h-4 text-zinc-900" /></div><div className="min-w-0"><h1 className="text-sm font-bold tracking-tight truncate">Auto Edit Studio</h1><p className="text-[10px] text-zinc-500 -mt-0.5 truncate">Automatic Video Editor</p></div></div>
+      <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden xs:inline">Generate Video</span><span className="xs:hidden">Generate</span></button></div>
     </header>
-    <div className="flex-1 flex min-h-0">
-      <div className="w-72 shrink-0"><MediaBin assets={assets} onAssetsChange={setAssets} voiceoverFile={voiceoverFile} onVoiceoverChange={handleVoiceoverChange} musicFile={musicFile} onMusicChange={handleMusicChange} scriptFile={scriptFile} onScriptChange={handleScriptChange} originalScriptFile={originalScriptFile} onOriginalScriptChange={handleOriginalScriptChange} transcriptFile={transcriptFile} onTranscriptChange={handleTranscriptChange} sceneOrderFile={sceneOrderFile} onSceneOrderChange={handleSceneOrderChange} /></div>
-      <div className="flex-1 flex flex-col min-w-0"><div className="flex-1 min-h-0"><PreviewPlayer timeline={timeline} settings={settings} onFrameUpdate={setCurrentFrame} playerRef={playerRef} /></div>{validation && <div className="max-h-32 overflow-y-auto bg-zinc-900 border-t border-zinc-800"><ValidationPanel result={validation} /></div>}<div className="h-48 shrink-0"><TimelineStrip timeline={timeline} waveform={waveform} currentFrame={currentFrame} onSeek={handleSeek} onTransitionChange={(sceneId, field, value) => { if (!timeline) return; setTimeline({ ...timeline, scenes: timeline.scenes.map((s) => s.id === sceneId ? { ...s, [field]: value } : s) }); }} /></div></div>
-      <div className="w-72 shrink-0"><SettingsPanel settings={settings} onChange={setSettings} /></div>
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden">
+      <div className="w-full lg:w-72 lg:shrink-0 h-auto max-h-[42vh] lg:h-full lg:max-h-none"><MediaBin assets={assets} onAssetsChange={setAssets} voiceoverFile={voiceoverFile} onVoiceoverChange={handleVoiceoverChange} musicFile={musicFile} onMusicChange={handleMusicChange} scriptFile={scriptFile} onScriptChange={handleScriptChange} originalScriptFile={originalScriptFile} onOriginalScriptChange={handleOriginalScriptChange} transcriptFile={transcriptFile} onTranscriptChange={handleTranscriptChange} sceneOrderFile={sceneOrderFile} onSceneOrderChange={handleSceneOrderChange} /></div>
+      <div className="flex-1 flex flex-col min-w-0 min-h-[70vh] lg:min-h-0"><div className="flex-1 min-h-[38vh] lg:min-h-0"><PreviewPlayer timeline={timeline} settings={settings} onFrameUpdate={setCurrentFrame} playerRef={playerRef} /></div>{validation && <div className="max-h-40 overflow-y-auto bg-zinc-900 border-t border-zinc-800"><ValidationPanel result={validation} /></div>}<div className="h-48 shrink-0 max-lg:h-40"><TimelineStrip timeline={timeline} waveform={waveform} currentFrame={currentFrame} onSeek={handleSeek} onTransitionChange={(sceneId, field, value) => { if (!timeline) return; setTimeline({ ...timeline, scenes: timeline.scenes.map((s) => s.id === sceneId ? { ...s, [field]: value } : s) }); }} /></div></div>
+      <div className="w-full lg:w-72 lg:shrink-0 h-auto max-h-[48vh] lg:h-full lg:max-h-none"><SettingsPanel settings={settings} onChange={setSettings} /></div>
     </div>
     <RenderDialog open={showRender} progress={progress} downloadUrl={downloadUrl} fileName={fileName} onClose={() => setShowRender(false)} onCancel={handleCancel} />
   </div>;
