@@ -5,6 +5,7 @@ import { MediaBin } from '@/components/MediaBin';
 import { PreviewPlayer } from '@/components/PreviewPlayer';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { TimelineStrip } from '@/components/TimelineStrip';
+import { EditorGuide } from '@/components/EditorGuide';
 import type { PlayerRef } from '@remotion/player';
 import { RenderDialog } from '@/components/RenderDialog';
 import { ValidationPanel } from '@/components/ValidationPanel';
@@ -156,16 +157,17 @@ export default function App() {
   const handleCancel = () => { abortRef.current?.abort(); setShowRender(false); setProgress({ stage: 'idle', message: '', progress: 0 }); };
   const fileName = `autoedit-${Date.now()}.mp4`;
 
-  return <div className="auto-edit-editor h-screen min-h-0 flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
+  return <div className="auto-edit-editor min-h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-x-hidden">
     <header className="min-h-14 flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur shrink-0">
       <div className="flex items-center gap-2.5 min-w-0"><div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center"><Film className="w-4 h-4 text-zinc-900" /></div><div className="min-w-0"><h1 className="text-sm font-bold tracking-tight truncate">Auto Edit Studio</h1><p className="text-[10px] text-zinc-500 -mt-0.5 truncate">Automatic Video Editor</p></div></div>
       <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden sm:inline">Generate Video</span><span className="sm:hidden">Generate</span></button></div>
     </header>
-    <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden">
+    <div className="h-[calc(100vh-3.5rem)] min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
       <div className="w-full lg:w-72 lg:shrink-0 h-[42vh] lg:h-full"><MediaBin assets={assets} onAssetsChange={setAssets} voiceoverFile={voiceoverFile} onVoiceoverChange={handleVoiceoverChange} musicFile={musicFile} onMusicChange={handleMusicChange} scriptFile={scriptFile} onScriptChange={handleScriptChange} originalScriptFile={originalScriptFile} onOriginalScriptChange={handleOriginalScriptChange} transcriptFile={transcriptFile} onTranscriptChange={handleTranscriptChange} sceneOrderFile={sceneOrderFile} onSceneOrderChange={handleSceneOrderChange} /></div>
       <div className="flex-1 flex flex-col min-w-0 min-h-[70vh] lg:min-h-0"><div className="flex-1 min-h-[38vh] lg:min-h-0"><PreviewPlayer timeline={timeline} settings={settings} onFrameUpdate={setCurrentFrame} playerRef={playerRef} /></div>{validation && <div className="max-h-40 overflow-y-auto bg-zinc-900 border-t border-zinc-800"><ValidationPanel result={validation} /></div>}<div className="h-48 shrink-0 max-lg:h-40"><TimelineStrip timeline={timeline} waveform={waveform} currentFrame={currentFrame} onSeek={handleSeek} onTransitionChange={(sceneId, field, value) => { if (!timeline) return; setTimeline({ ...timeline, scenes: timeline.scenes.map((s) => s.id === sceneId ? { ...s, [field]: value } : s) }); }} /></div></div>
       <div className="w-full lg:w-72 lg:shrink-0 h-[48vh] lg:h-full"><SettingsPanel settings={settings} onChange={setSettings} /></div>
     </div>
+    <EditorGuide />
     <RenderDialog open={showRender} progress={progress} downloadUrl={downloadUrl} fileName={fileName} onClose={() => setShowRender(false)} onCancel={handleCancel} />
   </div>;
 }
