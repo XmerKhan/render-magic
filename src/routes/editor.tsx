@@ -3,6 +3,11 @@ import App from "@/App";
 import { pageSeo } from "@/lib/site";
 
 export const Route = createFileRoute("/editor")({
-  head: () => pageSeo({ title: "Editor — AutoCut Studio", description: "Open the AutoCut Studio browser editor and build a narration-led video from your media, voiceover and timing script.", path: "/editor", noindex: true }),
+  head: () => pageSeo({
+    title: "Auto Edit Studio — AI Video Editor",
+    description: "Edit videos with AI in your browser. Auto Edit Studio is a fast, simple, and creative AI video editor.",
+    path: "/editor",
+    type: "website",
+  }),
   component: App,
 });
