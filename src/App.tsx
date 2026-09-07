@@ -83,7 +83,6 @@ export default function App() {
     return () => URL.revokeObjectURL(url);
   }, [musicFile]);
 
-  // Legacy timestamp JSON/SRT workflow remains intact.
   useEffect(() => {
     if (!scriptFile || originalScriptFile || transcriptFile) return;
     scriptFile.text().then((text) => {
@@ -92,7 +91,6 @@ export default function App() {
     });
   }, [scriptFile, originalScriptFile, transcriptFile, voiceoverDuration]);
 
-  // New automatic pipeline: original script + word timestamps + ordered media.
   useEffect(() => {
     if (!originalScriptFile || !transcriptFile || !voiceoverDuration || !assets.length) return;
     let cancelled = false;
@@ -125,9 +123,8 @@ export default function App() {
     if (!segments.length) { setTimeline(null); return; }
     const result = originalScriptFile && transcriptFile ? autoValidation(segments, voiceoverDuration, validation?.warnings ?? []) : validateScript(segments, mediaMap, voiceoverDuration);
     setValidation(result);
-    if (result.valid || result.errors.length === 0) {
-      setTimeline(buildTimeline(segments, mediaMap, voiceoverUrl, voiceoverDuration, settings, settings.musicUrl));
-    } else setTimeline(null);
+    if (result.valid || result.errors.length === 0) setTimeline(buildTimeline(segments, mediaMap, voiceoverUrl, voiceoverDuration, settings, settings.musicUrl));
+    else setTimeline(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, assets, voiceoverDuration, voiceoverUrl]);
 
@@ -162,7 +159,7 @@ export default function App() {
   return <div className="auto-edit-editor h-screen min-h-0 flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
     <header className="min-h-14 flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur shrink-0">
       <div className="flex items-center gap-2.5 min-w-0"><div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center"><Film className="w-4 h-4 text-zinc-900" /></div><div className="min-w-0"><h1 className="text-sm font-bold tracking-tight truncate">Auto Edit Studio</h1><p className="text-[10px] text-zinc-500 -mt-0.5 truncate">Automatic Video Editor</p></div></div>
-      <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden xs:inline">Generate Video</span><span className="xs:hidden">Generate</span></button></div>
+      <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden sm:inline">Generate Video</span><span className="sm:hidden">Generate</span></button></div>
     </header>
     <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden">
       <div className="w-full lg:w-72 lg:shrink-0 h-auto max-h-[42vh] lg:h-full lg:max-h-none"><MediaBin assets={assets} onAssetsChange={setAssets} voiceoverFile={voiceoverFile} onVoiceoverChange={handleVoiceoverChange} musicFile={musicFile} onMusicChange={handleMusicChange} scriptFile={scriptFile} onScriptChange={handleScriptChange} originalScriptFile={originalScriptFile} onOriginalScriptChange={handleOriginalScriptChange} transcriptFile={transcriptFile} onTranscriptChange={handleTranscriptChange} sceneOrderFile={sceneOrderFile} onSceneOrderChange={handleSceneOrderChange} /></div>
