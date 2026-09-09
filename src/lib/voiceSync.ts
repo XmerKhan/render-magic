@@ -107,6 +107,7 @@ export function alignScriptToTranscript(scriptLines: string[], transcript: Trans
 
   for (let i = 0; i < cleanScript.length; i++) {
     const scriptWords = tokenize(cleanScript[i]!);
+    if (!scriptWords.length) throw new Error(`Original script scene ${i + 1} is empty.`);
     const remainingLines = cleanScript.length - i - 1;
     const maxStart = transcriptWords.length - Math.max(1, remainingLines + 1);
     const match = findBestSpan(scriptWords, transcriptWords, cursor, Math.max(cursor, maxStart), remainingLines);
@@ -127,7 +128,6 @@ export function alignScriptToTranscript(scriptLines: string[], transcript: Trans
     return { sceneId: `scene${index + 1}`, text: cleanScript[index]!, startTime, endTime, confidence: match.score };
   });
 
-  // A valid word-level transcript must produce strictly increasing scene boundaries.
   for (let i = 1; i < lines.length; i++) {
     if (lines[i]!.startTime <= lines[i - 1]!.startTime) {
       throw new Error(`Transcript timestamps are not increasing around scene ${i + 1}. Check the word timestamp JSON.`);
@@ -146,43 +146,87 @@ export function alignScriptToTranscript(scriptLines: string[], transcript: Trans
   return { segments, lines, confidence, warnings };
 }
 
-export function parseOriginalScript(content: string): string[] {
-  const trimmed = content.trim();
-  if (!trimmed) throw new Error('Original script file is empty.');
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    const parsed = JSON.parse(trimmed) as unknown;
-    const raw = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === 'object'
-        ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).segments ?? (parsed as Record<string, unknown>).lines ?? [])
-        : [];
-    if (!Array.isArray(raw)) throw new Error('Script JSON must contain a scenes, segments, lines, or array structure.');
-    const lines = raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).text ?? '')).map((s) => s.trim()).filter(Boolean);
-    if (!lines.length) throw new Error('Script JSON contains no usable scene lines.');
-    return lines;
+function tryParseJson(content: string): unknown | null {
+  try {
+    return JSON.parse(content) as unknown;
+  } catch {
+    return null;
   }
-  const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    .map((line) => line.replace(/^(?:scene\s*)?\d+\s*[:.)-]\s*/i, '').trim()).filter(Boolean);
+}
+
+function cleanTextLine(line: string): string {
+  return line
+    .replace(/^[\uFEFF\s]+|[\s]+$/g, '')
+    .replace(/^(?:scene\s*)?\d+\s*[:.)-]\s*/i, '')
+    .replace(/^[-*]\s+/, '')
+    .trim();
+}
+
+function fallbackArrayLines(content: string): string[] {
+  // Handles common files exported as a simple JSON-like list but with a small formatting error.
+  // We deliberately fall back to line-based parsing instead of crashing on JSON.parse().
+  const lines = content
+    .replace(/^\s*\[\s*/s, '')
+    .replace(/\s*\]\s*$/s, '')
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[,]+|[,]+$/g, '').trim())
+    .map((line) => line.replace(/^['"]|['"]$/g, '').trim())
+    .map(cleanTextLine)
+    .filter(Boolean);
+  return lines;
+}
+
+export function parseOriginalScript(content: string): string[] {
+  const trimmed = content.replace(/^\uFEFF/, '').trim();
+  if (!trimmed) throw new Error('Original script file is empty.');
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    const parsed = tryParseJson(trimmed);
+    if (parsed !== null) {
+      const raw = Array.isArray(parsed)
+        ? parsed
+        : parsed && typeof parsed === 'object'
+          ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).segments ?? (parsed as Record<string, unknown>).lines ?? [])
+          : [];
+      if (!Array.isArray(raw)) throw new Error('Script JSON must contain a scenes, segments, lines, or array structure.');
+      const lines = raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).text ?? '')).map(cleanTextLine).filter(Boolean);
+      if (!lines.length) throw new Error('Script JSON contains no usable scene lines.');
+      return lines;
+    }
+
+    const recovered = fallbackArrayLines(trimmed);
+    if (recovered.length) return recovered;
+    throw new Error('The Original Script looks like JSON but is not valid JSON. Use one scene per line or valid JSON array/object format.');
+  }
+
+  const lines = trimmed.split(/\r?\n/).map(cleanTextLine).filter(Boolean);
   if (!lines.length) throw new Error('Original script contains no usable lines.');
   return lines;
 }
 
 export function parseSceneOrder(content: string): string[] {
-  const trimmed = content.trim();
+  const trimmed = content.replace(/^\uFEFF/, '').trim();
   if (!trimmed) throw new Error('Scene order file is empty.');
+
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    const parsed = JSON.parse(trimmed) as unknown;
-    const raw = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === 'object'
-        ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).order ?? (parsed as Record<string, unknown>).media ?? [])
-        : [];
-    if (!Array.isArray(raw)) throw new Error('Scene order JSON must contain a scenes, order, media, or array structure.');
-    return raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).mediaId ?? (item as Record<string, unknown>).file ?? (item as Record<string, unknown>).filename ?? ''))
-      .map((s) => s.trim()).filter(Boolean);
+    const parsed = tryParseJson(trimmed);
+    if (parsed !== null) {
+      const raw = Array.isArray(parsed)
+        ? parsed
+        : parsed && typeof parsed === 'object'
+          ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).order ?? (parsed as Record<string, unknown>).media ?? [])
+          : [];
+      if (!Array.isArray(raw)) throw new Error('Scene order JSON must contain a scenes, order, media, or array structure.');
+      return raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).mediaId ?? (item as Record<string, unknown>).file ?? (item as Record<string, unknown>).filename ?? ''))
+        .map(cleanTextLine).filter(Boolean);
+    }
+
+    const recovered = fallbackArrayLines(trimmed);
+    if (recovered.length) return recovered;
+    throw new Error('The Scene Order file looks like JSON but is not valid JSON. Use one filename per line or valid JSON format.');
   }
-  return trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    .map((line) => line.replace(/^(?:scene\s*)?\d+\s*[:.)-]\s*/i, '').trim()).filter(Boolean);
+
+  return trimmed.split(/\r?\n/).map(cleanTextLine).filter(Boolean);
 }
 
 function parseSeconds(value: unknown): number | null {
@@ -190,22 +234,23 @@ function parseSeconds(value: unknown): number | null {
   if (typeof value !== 'string') return null;
   const text = value.trim();
   if (!text) return null;
-
-  // Supports the user's format: "0.200s", "1s", "12.500s".
   const secondsMatch = text.match(/^(-?\d+(?:\.\d+)?)\s*s$/i);
   if (secondsMatch) return Number(secondsMatch[1]);
-
-  // Also accept plain numeric strings as seconds.
   const numeric = Number(text);
   return Number.isFinite(numeric) ? numeric : null;
 }
 
 export function parseTimestampedTranscript(content: string): TranscriptWord[] {
-  const trimmed = content.trim();
+  const trimmed = content.replace(/^\uFEFF/, '').trim();
   if (!trimmed) throw new Error('Transcript file is empty.');
 
   if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-    const parsed = JSON.parse(trimmed) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed) as unknown;
+    } catch (error) {
+      throw new Error(`Word Timestamp Transcript contains invalid JSON: ${(error as Error).message}`);
+    }
     const raw = Array.isArray(parsed)
       ? parsed
       : parsed && typeof parsed === 'object'
@@ -225,11 +270,8 @@ export function parseTimestampedTranscript(content: string): TranscriptWord[] {
     }
 
     if (!result.length) throw new Error('Transcript JSON contains no valid timestamped words. Expected word + startOffset/endOffset or startTime/endTime.');
-
-    // Do not silently render a collapsed timeline when a timestamp field was parsed incorrectly.
     const hasMeaningfulTimeRange = result.some((word) => word.endTime > 0) && result[result.length - 1]!.endTime > result[0]!.startTime;
     if (!hasMeaningfulTimeRange) throw new Error('Transcript timestamps appear to be collapsed to zero. Check startOffset/endOffset values.');
-
     return result;
   }
 
