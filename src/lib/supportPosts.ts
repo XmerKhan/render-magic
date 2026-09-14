@@ -279,7 +279,7 @@ export const supportPosts: BlogPost[] = [
       { t: 'h2', text: 'If every caption is early or late' },
       { t: 'p', text: 'When the same timing error appears from the beginning to the end, a global timing offset is usually the right type of fix. Auto Edit provides a caption timing offset in milliseconds so you do not have to rewrite every timestamp.' },
       { t: 'h2', text: 'If only one scene is wrong' },
-      { t: 'p', text: 'A local problem usually points to the source script or timestamp around that scene. Check that scene's text and its neighbouring timestamps instead of moving the entire caption track.' },
+      { t: 'p', text: 'A local problem usually points to the source script or timestamp around that scene. Check that scene\'s text and its neighbouring timestamps instead of moving the entire caption track.' },
       { t: 'h2', text: 'Check the voiceover first' },
       { t: 'p', text: 'Make sure the audio you are listening to is the same voiceover used to create the script or transcript. A different recording can have different pauses even when the words are identical.' },
       { t: 'h2', text: 'Do not confuse caption style with caption timing' },
@@ -290,7 +290,7 @@ export const supportPosts: BlogPost[] = [
         'Pick another sentence in the middle.',
         'Pick one near the end.',
         'If all three are shifted by roughly the same amount, test a global offset.',
-        'If only one is wrong, inspect that scene's source timing.'
+        'If only one is wrong, inspect that scene\'s source timing.'
       ] }
     ],
     related: ['how-to-add-captions-to-a-video', 'word-timestamp-transcript-format', 'voiceover-and-timeline-duration-explained']
