@@ -12,127 +12,142 @@ function tokenize(value: string): string[] {
   return value.split(/\s+/).map(normalizeWord).filter(Boolean);
 }
 
-function similarity(a: string, b: string): number {
+function cheapSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 1;
   if (a.length < 2 || b.length < 2) return 0;
-  if (a.includes(b) || b.includes(a)) return Math.min(a.length, b.length) / Math.max(a.length, b.length);
-  const matrix = Array.from({ length: a.length + 1 }, (_, i) =>
-    Array.from({ length: b.length + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0),
-  );
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      matrix[i]![j] = Math.min(
-        matrix[i - 1]![j]! + 1,
-        matrix[i]![j - 1]! + 1,
-        matrix[i - 1]![j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
+  if (a.startsWith(b) || b.startsWith(a)) return Math.min(a.length, b.length) / Math.max(a.length, b.length);
+  return 0;
+}
+
+function scoreCandidate(scriptWords: string[], transcriptWords: string[], start: number): number {
+  const sample = Math.min(scriptWords.length, 14);
+  if (start + sample > transcriptWords.length) return -1;
+
+  let score = 0;
+  let scriptIndex = 0;
+  let transcriptIndex = start;
+  let skips = 0;
+  const maxSkips = Math.max(2, Math.ceil(sample * 0.2));
+
+  while (scriptIndex < sample && transcriptIndex < transcriptWords.length) {
+    const similarity = cheapSimilarity(scriptWords[scriptIndex]!, transcriptWords[transcriptIndex]!);
+    if (similarity >= 0.75) {
+      score += similarity;
+      scriptIndex++;
+      transcriptIndex++;
+      continue;
     }
+
+    if (skips < maxSkips && transcriptIndex + 1 < transcriptWords.length) {
+      const nextSimilarity = cheapSimilarity(scriptWords[scriptIndex]!, transcriptWords[transcriptIndex + 1]!);
+      if (nextSimilarity > similarity) {
+        skips++;
+        transcriptIndex++;
+        continue;
+      }
+    }
+
+    scriptIndex++;
+    transcriptIndex++;
   }
-  return Math.max(0, 1 - matrix[a.length]![b.length]! / Math.max(a.length, b.length));
+
+  const matched = score / Math.max(1, sample);
+  const coverage = scriptIndex / Math.max(1, sample);
+  return matched * 0.75 + coverage * 0.25 - skips * 0.025;
 }
 
-function scoreSpan(scriptWords: string[], transcriptWords: string[], start: number, endExclusive: number): number {
-  const span = transcriptWords.slice(start, endExclusive);
-  if (!span.length) return 0;
-  const n = Math.min(scriptWords.length, span.length);
-  let aligned = 0;
-  for (let i = 0; i < n; i++) aligned += similarity(scriptWords[i]!, span[i]!);
-  const alignedScore = aligned / Math.max(1, scriptWords.length);
-  const lengthRatio = Math.min(span.length, scriptWords.length) / Math.max(span.length, scriptWords.length);
-  let bagScore = 0;
-  for (const word of scriptWords) {
-    let best = 0;
-    for (const candidate of span) best = Math.max(best, similarity(word, candidate));
-    bagScore += best;
-  }
-  bagScore /= Math.max(1, scriptWords.length);
-  return alignedScore * 0.7 + bagScore * 0.2 + lengthRatio * 0.1;
-}
-
-function findBestSpan(
+function findBestLineStart(
   scriptWords: string[],
   transcriptWords: string[],
   cursor: number,
   maxStart: number,
-  minimumWordsAfter: number,
-): { start: number; endExclusive: number; score: number } {
-  let best = {
-    start: cursor,
-    endExclusive: Math.min(transcriptWords.length, cursor + scriptWords.length),
-    score: -1,
-  };
-  const minLen = Math.max(1, Math.floor(scriptWords.length * 0.65));
-  const maxLen = Math.min(
-    transcriptWords.length - cursor - minimumWordsAfter,
-    Math.max(minLen, Math.ceil(scriptWords.length * 1.45)),
-  );
-  if (maxLen < minLen) return best;
+): { start: number; score: number } {
+  const first = scriptWords[0]!;
+  const second = scriptWords[1];
+  let best = { start: cursor, score: -1 };
 
+  // This deliberately avoids the previous O(start × length × word × Levenshtein)
+  // search. Auto Sync must remain responsive even for 100+ scene documentaries.
   for (let start = cursor; start <= maxStart; start++) {
-    if (scriptWords.length <= transcriptWords.length - start) {
-      let exact = true;
-      for (let i = 0; i < scriptWords.length; i++) {
-        if (scriptWords[i] !== transcriptWords[start + i]) {
-          exact = false;
-          break;
-        }
+    const firstScore = cheapSimilarity(first, transcriptWords[start]!);
+    if (firstScore < 0.75) continue;
+
+    // Strong exact anchors win immediately. Three consecutive words are much
+    // safer than matching a common word such as "the" or "and".
+    if (
+      second &&
+      start + 1 < transcriptWords.length &&
+      cheapSimilarity(second, transcriptWords[start + 1]!) === 1
+    ) {
+      const third = scriptWords[2];
+      if (!third || (start + 2 < transcriptWords.length && cheapSimilarity(third, transcriptWords[start + 2]!) === 1)) {
+        return { start, score: 1 };
       }
-      if (exact) return { start, endExclusive: start + scriptWords.length, score: 1 };
     }
-    for (let length = minLen; length <= maxLen; length++) {
-      const endExclusive = start + length;
-      const score = scoreSpan(scriptWords, transcriptWords, start, endExclusive);
-      if (score > best.score) best = { start, endExclusive, score };
-    }
+
+    const score = scoreCandidate(scriptWords, transcriptWords, start);
+    if (score > best.score) best = { start, score };
   }
+
   return best;
 }
 
-export function alignScriptToTranscript(scriptLines: string[], transcript: TranscriptWord[], mediaIds: string[]): VoiceSyncResult {
+export async function alignScriptToTranscript(
+  scriptLines: string[],
+  transcript: TranscriptWord[],
+  mediaIds: string[],
+  onProgress?: (current: number, total: number) => void,
+): Promise<VoiceSyncResult> {
   const cleanScript = scriptLines.map((text) => text.trim()).filter(Boolean);
   const words = transcript
     .filter((item) => Number.isFinite(item.startTime) && Number.isFinite(item.endTime) && item.endTime >= item.startTime)
     .map((item) => ({ ...item, word: normalizeWord(item.word) }))
-    .filter((item) => item.word);
+    .filter((item) => item.word)
+    .sort((a, b) => a.startTime - b.startTime);
 
   if (!cleanScript.length) throw new Error('The original script contains no usable lines.');
   if (!words.length) throw new Error('The transcript contains no timestamped words. Upload a word-timestamp transcript.');
   if (mediaIds.length < cleanScript.length) throw new Error(`There are ${cleanScript.length} script lines but only ${mediaIds.length} scene media files.`);
 
   const transcriptWords = words.map((item) => item.word);
-  const matches: { start: number; endExclusive: number; score: number }[] = [];
+  const starts: { start: number; score: number }[] = [];
   let cursor = 0;
   const warnings: string[] = [];
 
   for (let i = 0; i < cleanScript.length; i++) {
     const scriptWords = tokenize(cleanScript[i]!);
     if (!scriptWords.length) throw new Error(`Original script scene ${i + 1} is empty.`);
+
     const remainingLines = cleanScript.length - i - 1;
     const maxStart = transcriptWords.length - Math.max(1, remainingLines + 1);
-    const match = findBestSpan(scriptWords, transcriptWords, cursor, Math.max(cursor, maxStart), remainingLines);
-    if (match.endExclusive <= match.start || match.endExclusive > transcriptWords.length) {
-      throw new Error(`Unable to align script scene ${i + 1}. Check that the transcript contains the same narration words in the same order.`);
+    const match = findBestLineStart(scriptWords, transcriptWords, cursor, Math.max(cursor, maxStart));
+
+    if (match.start < cursor || match.start >= transcriptWords.length || match.score < 0) {
+      throw new Error(`Unable to align script scene ${i + 1}. The transcript may be missing narration around this scene.`);
     }
-    if (match.score < 0.72) warnings.push(`Scene ${i + 1} has a low transcript match confidence (${Math.round(match.score * 100)}%). Review this scene before rendering.`);
-    matches.push(match);
-    cursor = match.endExclusive;
+
+    if (match.score < 0.72) {
+      warnings.push(`Scene ${i + 1} has a low transcript match confidence (${Math.round(match.score * 100)}%). Review this scene before rendering.`);
+    }
+
+    starts.push(match);
+    cursor = match.start + 1;
+    onProgress?.(i + 1, cleanScript.length);
+
+    // Yield to the browser after every scene so React can paint the progress bar
+    // and the tab never becomes "Page Unresponsive" during a large sync job.
+    if (i < cleanScript.length - 1) await new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
 
-  const lines: VoiceSyncLine[] = matches.map((match, index) => {
-    const next = matches[index + 1];
-    const startTime = index === 0 ? Math.max(0, words[match.start]!.startTime) : words[match.start]!.startTime;
+  const lines: VoiceSyncLine[] = starts.map((match, index) => {
+    const next = starts[index + 1];
+    const startTime = Math.max(0, words[match.start]!.startTime);
     const endTime = next
       ? Math.max(startTime + 0.001, words[next.start]!.startTime)
-      : Math.max(startTime + 0.001, words[match.endExclusive - 1]!.endTime);
+      : Math.max(startTime + 0.001, words[words.length - 1]!.endTime);
     return { sceneId: `scene${index + 1}`, text: cleanScript[index]!, startTime, endTime, confidence: match.score };
   });
-
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i]!.startTime <= lines[i - 1]!.startTime) {
-      throw new Error(`Transcript timestamps are not increasing around scene ${i + 1}. Check the word timestamp JSON.`);
-    }
-  }
 
   const segments: ScriptSegment[] = lines.map((line, index) => ({
     sceneId: line.sceneId,
@@ -141,17 +156,14 @@ export function alignScriptToTranscript(scriptLines: string[], transcript: Trans
     endTime: line.endTime,
     text: line.text,
   }));
+
   const confidence = lines.reduce((sum, line) => sum + line.confidence, 0) / lines.length;
   if (confidence < 0.85) warnings.push(`Overall script/transcript confidence is ${Math.round(confidence * 100)}%. Review the flagged lines before rendering.`);
   return { segments, lines, confidence, warnings };
 }
 
 function tryParseJson(content: string): unknown | null {
-  try {
-    return JSON.parse(content) as unknown;
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(content) as unknown; } catch { return null; }
 }
 
 function cleanTextLine(line: string): string {
@@ -163,9 +175,7 @@ function cleanTextLine(line: string): string {
 }
 
 function fallbackArrayLines(content: string): string[] {
-  // Handles common files exported as a simple JSON-like list but with a small formatting error.
-  // We deliberately fall back to line-based parsing instead of crashing on JSON.parse().
-  const lines = content
+  return content
     .replace(/^\s*\[\s*/s, '')
     .replace(/\s*\]\s*$/s, '')
     .split(/\r?\n/)
@@ -173,32 +183,25 @@ function fallbackArrayLines(content: string): string[] {
     .map((line) => line.replace(/^['"]|['"]$/g, '').trim())
     .map(cleanTextLine)
     .filter(Boolean);
-  return lines;
 }
 
 export function parseOriginalScript(content: string): string[] {
   const trimmed = content.replace(/^\uFEFF/, '').trim();
   if (!trimmed) throw new Error('Original script file is empty.');
-
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     const parsed = tryParseJson(trimmed);
     if (parsed !== null) {
-      const raw = Array.isArray(parsed)
-        ? parsed
-        : parsed && typeof parsed === 'object'
-          ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).segments ?? (parsed as Record<string, unknown>).lines ?? [])
-          : [];
+      const raw = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object'
+        ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).segments ?? (parsed as Record<string, unknown>).lines ?? []) : [];
       if (!Array.isArray(raw)) throw new Error('Script JSON must contain a scenes, segments, lines, or array structure.');
       const lines = raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).text ?? '')).map(cleanTextLine).filter(Boolean);
       if (!lines.length) throw new Error('Script JSON contains no usable scene lines.');
       return lines;
     }
-
     const recovered = fallbackArrayLines(trimmed);
     if (recovered.length) return recovered;
     throw new Error('The Original Script looks like JSON but is not valid JSON. Use one scene per line or valid JSON array/object format.');
   }
-
   const lines = trimmed.split(/\r?\n/).map(cleanTextLine).filter(Boolean);
   if (!lines.length) throw new Error('Original script contains no usable lines.');
   return lines;
@@ -207,25 +210,18 @@ export function parseOriginalScript(content: string): string[] {
 export function parseSceneOrder(content: string): string[] {
   const trimmed = content.replace(/^\uFEFF/, '').trim();
   if (!trimmed) throw new Error('Scene order file is empty.');
-
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     const parsed = tryParseJson(trimmed);
     if (parsed !== null) {
-      const raw = Array.isArray(parsed)
-        ? parsed
-        : parsed && typeof parsed === 'object'
-          ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).order ?? (parsed as Record<string, unknown>).media ?? [])
-          : [];
+      const raw = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object'
+        ? ((parsed as Record<string, unknown>).scenes ?? (parsed as Record<string, unknown>).order ?? (parsed as Record<string, unknown>).media ?? []) : [];
       if (!Array.isArray(raw)) throw new Error('Scene order JSON must contain a scenes, order, media, or array structure.');
-      return raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).mediaId ?? (item as Record<string, unknown>).file ?? (item as Record<string, unknown>).filename ?? ''))
-        .map(cleanTextLine).filter(Boolean);
+      return raw.map((item) => typeof item === 'string' ? item : String((item as Record<string, unknown>).mediaId ?? (item as Record<string, unknown>).file ?? (item as Record<string, unknown>).filename ?? '')).map(cleanTextLine).filter(Boolean);
     }
-
     const recovered = fallbackArrayLines(trimmed);
     if (recovered.length) return recovered;
     throw new Error('The Scene Order file looks like JSON but is not valid JSON. Use one filename per line or valid JSON format.');
   }
-
   return trimmed.split(/\r?\n/).map(cleanTextLine).filter(Boolean);
 }
 
@@ -243,36 +239,26 @@ function parseSeconds(value: unknown): number | null {
 export function parseTimestampedTranscript(content: string): TranscriptWord[] {
   const trimmed = content.replace(/^\uFEFF/, '').trim();
   if (!trimmed) throw new Error('Transcript file is empty.');
-
   if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
     let parsed: unknown;
-    try {
-      parsed = JSON.parse(trimmed) as unknown;
-    } catch (error) {
-      throw new Error(`Word Timestamp Transcript contains invalid JSON: ${(error as Error).message}`);
-    }
-    const raw = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === 'object'
-        ? ((parsed as Record<string, unknown>).words ?? (parsed as Record<string, unknown>).transcript ?? [])
-        : [];
+    try { parsed = JSON.parse(trimmed) as unknown; }
+    catch (error) { throw new Error(`Word Timestamp Transcript contains invalid JSON: ${(error as Error).message}`); }
+    const raw = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object'
+      ? ((parsed as Record<string, unknown>).words ?? (parsed as Record<string, unknown>).transcript ?? []) : [];
     if (!Array.isArray(raw)) throw new Error('Transcript JSON must contain a words array.');
-
     const result: TranscriptWord[] = [];
     for (const item of raw) {
       const value = item as Record<string, unknown>;
       const start = parseSeconds(value.startOffset ?? value.startTime ?? value.start ?? value.start_sec);
       const end = parseSeconds(value.endOffset ?? value.endTime ?? value.end ?? value.end_sec);
       const word = String(value.word ?? value.text ?? '').trim();
-      if (!word || start === null || end === null) continue;
-      if (start < 0 || end < start) continue;
+      if (!word || start === null || end === null || start < 0 || end < start) continue;
       result.push({ word, startTime: start, endTime: end });
     }
-
     if (!result.length) throw new Error('Transcript JSON contains no valid timestamped words. Expected word + startOffset/endOffset or startTime/endTime.');
     const hasMeaningfulTimeRange = result.some((word) => word.endTime > 0) && result[result.length - 1]!.endTime > result[0]!.startTime;
     if (!hasMeaningfulTimeRange) throw new Error('Transcript timestamps appear to be collapsed to zero. Check startOffset/endOffset values.');
-    return result;
+    return result.sort((a, b) => a.startTime - b.startTime);
   }
 
   const result: TranscriptWord[] = [];
