@@ -12,6 +12,8 @@ function tokenize(value: string): string[] {
   return value.split(/\s+/).map(normalizeWord).filter(Boolean);
 }
 
+// Intentionally cheap: the old Levenshtein matrix was the main cause of the
+// browser freezing on long scripts/transcripts.
 function cheapSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 1;
@@ -31,17 +33,17 @@ function scoreCandidate(scriptWords: string[], transcriptWords: string[], start:
   const maxSkips = Math.max(2, Math.ceil(sample * 0.2));
 
   while (scriptIndex < sample && transcriptIndex < transcriptWords.length) {
-    const similarity = cheapSimilarity(scriptWords[scriptIndex]!, transcriptWords[transcriptIndex]!);
-    if (similarity >= 0.75) {
-      score += similarity;
+    const current = cheapSimilarity(scriptWords[scriptIndex]!, transcriptWords[transcriptIndex]!);
+    if (current >= 0.75) {
+      score += current;
       scriptIndex++;
       transcriptIndex++;
       continue;
     }
 
     if (skips < maxSkips && transcriptIndex + 1 < transcriptWords.length) {
-      const nextSimilarity = cheapSimilarity(scriptWords[scriptIndex]!, transcriptWords[transcriptIndex + 1]!);
-      if (nextSimilarity > similarity) {
+      const next = cheapSimilarity(scriptWords[scriptIndex]!, transcriptWords[transcriptIndex + 1]!);
+      if (next > current) {
         skips++;
         transcriptIndex++;
         continue;
@@ -52,9 +54,7 @@ function scoreCandidate(scriptWords: string[], transcriptWords: string[], start:
     transcriptIndex++;
   }
 
-  const matched = score / Math.max(1, sample);
-  const coverage = scriptIndex / Math.max(1, sample);
-  return matched * 0.75 + coverage * 0.25 - skips * 0.025;
+  return (score / Math.max(1, sample)) * 0.75 + (scriptIndex / Math.max(1, sample)) * 0.25 - skips * 0.025;
 }
 
 function findBestLineStart(
@@ -67,21 +67,14 @@ function findBestLineStart(
   const second = scriptWords[1];
   let best = { start: cursor, score: -1 };
 
-  // This deliberately avoids the previous O(start × length × word × Levenshtein)
-  // search. Auto Sync must remain responsive even for 100+ scene documentaries.
+  // Search only possible first-word anchors and score a short prefix. This is
+  // dramatically cheaper than scanning every possible span with Levenshtein.
   for (let start = cursor; start <= maxStart; start++) {
-    const firstScore = cheapSimilarity(first, transcriptWords[start]!);
-    if (firstScore < 0.75) continue;
+    if (cheapSimilarity(first, transcriptWords[start]!) < 0.75) continue;
 
-    // Strong exact anchors win immediately. Three consecutive words are much
-    // safer than matching a common word such as "the" or "and".
-    if (
-      second &&
-      start + 1 < transcriptWords.length &&
-      cheapSimilarity(second, transcriptWords[start + 1]!) === 1
-    ) {
+    if (second && cheapSimilarity(second, transcriptWords[start + 1]!) === 1) {
       const third = scriptWords[2];
-      if (!third || (start + 2 < transcriptWords.length && cheapSimilarity(third, transcriptWords[start + 2]!) === 1)) {
+      if (!third || cheapSimilarity(third, transcriptWords[start + 2]!) === 1) {
         return { start, score: 1 };
       }
     }
@@ -89,16 +82,10 @@ function findBestLineStart(
     const score = scoreCandidate(scriptWords, transcriptWords, start);
     if (score > best.score) best = { start, score };
   }
-
   return best;
 }
 
-export async function alignScriptToTranscript(
-  scriptLines: string[],
-  transcript: TranscriptWord[],
-  mediaIds: string[],
-  onProgress?: (current: number, total: number) => void,
-): Promise<VoiceSyncResult> {
+export function alignScriptToTranscript(scriptLines: string[], transcript: TranscriptWord[], mediaIds: string[]): VoiceSyncResult {
   const cleanScript = scriptLines.map((text) => text.trim()).filter(Boolean);
   const words = transcript
     .filter((item) => Number.isFinite(item.startTime) && Number.isFinite(item.endTime) && item.endTime >= item.startTime)
@@ -126,18 +113,10 @@ export async function alignScriptToTranscript(
     if (match.start < cursor || match.start >= transcriptWords.length || match.score < 0) {
       throw new Error(`Unable to align script scene ${i + 1}. The transcript may be missing narration around this scene.`);
     }
-
-    if (match.score < 0.72) {
-      warnings.push(`Scene ${i + 1} has a low transcript match confidence (${Math.round(match.score * 100)}%). Review this scene before rendering.`);
-    }
+    if (match.score < 0.72) warnings.push(`Scene ${i + 1} has a low transcript match confidence (${Math.round(match.score * 100)}%). Review this scene before rendering.`);
 
     starts.push(match);
     cursor = match.start + 1;
-    onProgress?.(i + 1, cleanScript.length);
-
-    // Yield to the browser after every scene so React can paint the progress bar
-    // and the tab never becomes "Page Unresponsive" during a large sync job.
-    if (i < cleanScript.length - 1) await new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
 
   const lines: VoiceSyncLine[] = starts.map((match, index) => {
@@ -167,22 +146,13 @@ function tryParseJson(content: string): unknown | null {
 }
 
 function cleanTextLine(line: string): string {
-  return line
-    .replace(/^[\uFEFF\s]+|[\s]+$/g, '')
-    .replace(/^(?:scene\s*)?\d+\s*[:.)-]\s*/i, '')
-    .replace(/^[-*]\s+/, '')
-    .trim();
+  return line.replace(/^[\uFEFF\s]+|[\s]+$/g, '').replace(/^(?:scene\s*)?\d+\s*[:.)-]\s*/i, '').replace(/^[-*]\s+/, '').trim();
 }
 
 function fallbackArrayLines(content: string): string[] {
-  return content
-    .replace(/^\s*\[\s*/s, '')
-    .replace(/\s*\]\s*$/s, '')
-    .split(/\r?\n/)
+  return content.replace(/^\s*\[\s*/s, '').replace(/\s*\]\s*$/s, '').split(/\r?\n/)
     .map((line) => line.trim().replace(/^[,]+|[,]+$/g, '').trim())
-    .map((line) => line.replace(/^['"]|['"]$/g, '').trim())
-    .map(cleanTextLine)
-    .filter(Boolean);
+    .map((line) => line.replace(/^['"]|['"]$/g, '').trim()).map(cleanTextLine).filter(Boolean);
 }
 
 export function parseOriginalScript(content: string): string[] {
