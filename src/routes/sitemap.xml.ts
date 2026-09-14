@@ -3,7 +3,7 @@ import { posts } from "@/lib/blog";
 import { supportPosts } from "@/lib/supportPosts";
 import { absoluteUrl } from "@/lib/site";
 
-export const Route = createFileRoute("/sitemap.xml")({
+export const Route = createFileRoute("/sitemap/xml")({
   server: {
     handlers: {
       GET: () => {
