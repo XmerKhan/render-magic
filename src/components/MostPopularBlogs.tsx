@@ -1,5 +1,6 @@
-import { Eye, Heart, Clock3, ArrowUpRight, BookOpen, Captions, Music2, Scissors, Sparkles, Video } from "lucide-react";
+import { ArrowUpRight, BookOpen, Captions, Clock3, Music2, Scissors, Sparkles, Video } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { posts } from "@/lib/blog";
 import { supportPosts } from "@/lib/supportPosts";
 
@@ -20,6 +21,12 @@ const iconByCluster: Record<string, typeof BookOpen> = {
   Troubleshooting: Scissors,
 };
 
+const fallbackIcons = [Video, Captions, Music2, Sparkles, Scissors, BookOpen];
+
+function getPostIcon(post: PopularPost, index: number) {
+  return iconByCluster[post.cluster] ?? fallbackIcons[index % fallbackIcons.length];
+}
+
 function formatCount(value?: number) {
   if (typeof value !== "number") return "—";
   if (value >= 1000000) return `${(value / 1000000).toFixed(1).replace(".0", "")}M`;
@@ -27,37 +34,24 @@ function formatCount(value?: number) {
   return String(value);
 }
 
-function PopularCard({ post, rank }: { post: PopularPost; rank: number }) {
-  const Icon = iconByCluster[post.cluster] ?? BookOpen;
-
+function PopularTextCard({ post, rank }: { post: PopularPost; rank: number }) {
   return (
     <Link
       to="/blog/$slug"
       params={{ slug: post.slug }}
-      className="group flex min-h-[112px] items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3 transition hover:border-amber-500/40 hover:bg-zinc-900"
+      className="group flex min-h-[96px] items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/85 px-4 py-3 transition hover:border-amber-500/40 hover:bg-zinc-900"
       aria-label={`Read ${post.title}`}
     >
-      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-zinc-800 bg-gradient-to-br from-amber-500/15 via-zinc-900 to-zinc-950">
-        {post.thumbnail ? (
-          <img src={post.thumbnail} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-amber-400">
-            <Icon className="h-7 w-7" aria-hidden="true" />
-          </div>
-        )}
-        <span className="absolute left-1.5 top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full border border-amber-300/30 bg-amber-500 px-1.5 text-[11px] font-black text-zinc-950 shadow-lg">
-          {rank}
-        </span>
-      </div>
-
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-xs font-black text-amber-400">
+        {rank}
+      </span>
       <div className="min-w-0 flex-1">
         <h3 className="line-clamp-2 text-sm font-bold leading-5 text-white transition group-hover:text-amber-300">
           {post.title}
         </h3>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
-          <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{formatCount(post.likes)}</span>
-          <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" />{formatCount(post.views)}</span>
-          <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{post.readingMinutes} min</span>
+          <span>{post.cluster}</span>
+          <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{post.readingMinutes} min read</span>
         </div>
       </div>
       <ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-600 transition group-hover:text-amber-400" />
@@ -65,47 +59,111 @@ function PopularCard({ post, rank }: { post: PopularPost; rank: number }) {
   );
 }
 
-function FeaturedPopularCard({ post }: { post: PopularPost }) {
-  const Icon = iconByCluster[post.cluster] ?? BookOpen;
+function FeaturedStack({ source }: { source: PopularPost[] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  const visibleCount = Math.min(4, source.length);
+  const visibleCards = useMemo(() => {
+    return Array.from({ length: visibleCount }, (_, offset) => ({
+      post: source[(activeIndex + offset) % source.length],
+      offset,
+      sourceIndex: (activeIndex + offset) % source.length,
+    }));
+  }, [activeIndex, source, visibleCount]);
+
+  useEffect(() => {
+    if (source.length <= 1 || paused) return;
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % source.length);
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [paused, source.length]);
 
   return (
-    <Link
-      to="/blog/$slug"
-      params={{ slug: post.slug }}
-      className="group block overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl transition hover:-translate-y-1 hover:border-amber-500/40"
-      aria-label={`Read featured blog ${post.title}`}
+    <div
+      className="relative min-h-[430px] sm:min-h-[450px]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
+      }}
+      aria-label="Featured popular blog cards"
     >
-      <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-amber-500/20 via-zinc-900 to-zinc-950">
-        {post.thumbnail ? (
-          <img src={post.thumbnail} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_35%,rgba(245,158,11,.22),transparent_58%)] text-amber-400">
-            <Icon className="h-20 w-20 opacity-90 transition duration-500 group-hover:scale-110" aria-hidden="true" />
-          </div>
-        )}
-        <span className="absolute left-4 top-4 rounded-full border border-amber-300/30 bg-amber-500 px-3 py-1 text-xs font-black uppercase tracking-wider text-zinc-950 shadow-lg">
-          #1 Popular
-        </span>
+      <div className="absolute inset-x-4 top-3 h-full rounded-3xl border border-zinc-800/60 bg-zinc-950/40" aria-hidden="true" />
+      <div className="absolute inset-x-2 top-1 h-full rounded-3xl border border-zinc-800/80 bg-zinc-950/65" aria-hidden="true" />
+
+      {visibleCards.map(({ post, offset, sourceIndex }) => {
+        const Icon = getPostIcon(post, sourceIndex);
+        const isActive = offset === 0;
+
+        return (
+          <Link
+            key={`${post.slug}-${activeIndex}-${offset}`}
+            to="/blog/$slug"
+            params={{ slug: post.slug }}
+            className="group absolute inset-x-0 top-0 block overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl transition-[transform,opacity,filter] duration-700 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            style={{
+              transform: `translateY(${offset * 14}px) scale(${1 - offset * 0.035})`,
+              opacity: offset === visibleCount - 1 ? 0.42 : 1 - offset * 0.13,
+              zIndex: visibleCount - offset,
+              filter: offset > 0 ? "saturate(.8)" : undefined,
+            }}
+            aria-label={`Read featured blog ${post.title}`}
+          >
+            <div className="relative flex min-h-[360px] flex-col justify-between p-6 sm:min-h-[380px] sm:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-amber-400/20 bg-amber-500/10 text-amber-400 shadow-inner">
+                  <Icon className="h-10 w-10" aria-hidden="true" />
+                </div>
+                <span className="rounded-full border border-amber-300/25 bg-amber-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-950">
+                  {isActive ? "Featured" : `Next ${offset}`}
+                </span>
+              </div>
+
+              <div className="mt-8">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-400">{post.cluster}</p>
+                <h2 className="mt-3 line-clamp-3 text-2xl font-black leading-8 text-white sm:text-3xl">
+                  {post.title}
+                </h2>
+                <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-400">{post.description}</p>
+              </div>
+
+              <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-xs text-zinc-500">
+                  <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{post.readingMinutes} min read</span>
+                  {post.likes !== undefined && <span>{formatCount(post.likes)} likes</span>}
+                  {post.views !== undefined && <span>{formatCount(post.views)} views</span>}
+                </div>
+                <span className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-zinc-950 transition group-hover:bg-amber-400">
+                  Read Guide <ArrowUpRight className="h-4 w-4" />
+                </span>
+              </div>
+            </div>
+          </Link>
+        );
+      })}
+
+      <div className="absolute bottom-0 left-0 z-30 flex items-center gap-1.5" aria-hidden="true">
+        {source.slice(0, Math.min(source.length, 8)).map((post, index) => (
+          <span
+            key={post.slug}
+            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeIndex % Math.min(source.length, 8) ? "w-7 bg-amber-400" : "w-1.5 bg-zinc-700"}`}
+          />
+        ))}
       </div>
-      <div className="p-5 sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400">Most Popular Blogs</p>
-        <h2 className="mt-2 line-clamp-2 text-xl font-black leading-7 text-white transition group-hover:text-amber-300 sm:text-2xl">
-          {post.title}
-        </h2>
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
-          <span className="inline-flex items-center gap-1.5"><Heart className="h-3.5 w-3.5" />{formatCount(post.likes)}</span>
-          <span className="inline-flex items-center gap-1.5"><Eye className="h-3.5 w-3.5" />{formatCount(post.views)}</span>
-          <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{post.readingMinutes} min read</span>
-        </div>
-      </div>
-    </Link>
+
+      <span className="absolute bottom-0 right-0 z-30 text-[11px] font-medium text-zinc-600">
+        {paused ? "Paused — click a card to read" : "Auto-changing featured guides"}
+      </span>
+    </div>
   );
 }
 
 export function MostPopularBlogs() {
   const source = allPosts as PopularPost[];
   if (!source.length) return null;
-  const featuredPost = source[0];
 
   return (
     <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6" aria-labelledby="most-popular-blogs-title">
@@ -118,28 +176,32 @@ export function MostPopularBlogs() {
         @media (max-width: 639px) { .most-popular-window { height: 310px; } .most-popular-track { animation-duration: 36s; } }
         @media (prefers-reduced-motion: reduce) { .most-popular-track { animation: none; transform: translateY(0); } }
       `}</style>
+
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900/45 p-5 shadow-2xl sm:p-7">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
           <div>
-            <FeaturedPopularCard post={featuredPost} />
-            <Link to="/blog" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-300">
-              View all blogs <ArrowUpRight className="h-4 w-4" />
-            </Link>
+            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-amber-400">Featured collection</p>
+            <FeaturedStack source={source} />
           </div>
 
           <div>
             <div className="mb-4">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-400">Most Popular</p>
               <h2 id="most-popular-blogs-title" className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">Popular blogs</h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">Explore the most useful guides from our blog collection.</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">A simple text list of useful guides. Hover to pause the loop, then click any title to open it.</p>
             </div>
+
             <div className="most-popular-window" tabIndex={0} aria-label="Most popular blog list. Hover or focus to pause scrolling.">
               <div className="most-popular-track">
                 {[...source, ...source].map((post, index) => (
-                  <PopularCard key={`${post.slug}-${index}`} post={post} rank={(index % source.length) + 1} />
+                  <PopularTextCard key={`${post.slug}-${index}`} post={post} rank={(index % source.length) + 1} />
                 ))}
               </div>
             </div>
+
+            <Link to="/blog" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-300">
+              View all blogs <ArrowUpRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </div>
