@@ -71,21 +71,22 @@ export function MostPopularBlogs() {
 
   return (
     <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6" aria-labelledby="most-popular-blogs-title">
+      <style>{`
+        @keyframes most-popular-scroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+        .most-popular-window { position: relative; height: 360px; overflow: hidden; border-radius: 1rem; outline: none; -webkit-mask-image: linear-gradient(to bottom, transparent, black 8%, black 92%, transparent); mask-image: linear-gradient(to bottom, transparent, black 8%, black 92%, transparent); }
+        .most-popular-window:focus-visible { box-shadow: 0 0 0 2px rgb(245 158 11 / .7); }
+        .most-popular-track { display: grid; gap: .75rem; animation: most-popular-scroll 42s linear infinite; will-change: transform; }
+        .most-popular-window:hover .most-popular-track, .most-popular-window:focus .most-popular-track, .most-popular-window:focus-within .most-popular-track { animation-play-state: paused; }
+        @media (max-width: 639px) { .most-popular-window { height: 310px; } .most-popular-track { animation-duration: 36s; } }
+        @media (prefers-reduced-motion: reduce) { .most-popular-track { animation: none; transform: translateY(0); } }
+      `}</style>
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900/45 p-5 shadow-2xl sm:p-7">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-center">
           <div className="max-w-xl">
-            <span className="inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-300">
-              Most Popular
-            </span>
-            <h2 id="most-popular-blogs-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">
-              Most Popular Blogs
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-zinc-400 sm:text-base">
-              Quick guides for the questions creators ask most. The list uses the same blog source as the rest of the site and loops continuously.
-            </p>
-            <Link to="/blog" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-300">
-              View all blogs <ArrowUpRight className="h-4 w-4" />
-            </Link>
+            <span className="inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-300">Most Popular</span>
+            <h2 id="most-popular-blogs-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">Most Popular Blogs</h2>
+            <p className="mt-4 text-sm leading-7 text-zinc-400 sm:text-base">Quick guides for the questions creators ask most. The list uses the same blog source as the rest of the site and loops continuously.</p>
+            <Link to="/blog" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-300">View all blogs <ArrowUpRight className="h-4 w-4" /></Link>
           </div>
 
           <div className="most-popular-window" tabIndex={0} aria-label="Most popular blog list. Hover or focus to pause scrolling.">
