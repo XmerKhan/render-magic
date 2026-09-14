@@ -65,9 +65,47 @@ function PopularCard({ post, rank }: { post: PopularPost; rank: number }) {
   );
 }
 
+function FeaturedPopularCard({ post }: { post: PopularPost }) {
+  const Icon = iconByCluster[post.cluster] ?? BookOpen;
+
+  return (
+    <Link
+      to="/blog/$slug"
+      params={{ slug: post.slug }}
+      className="group block overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl transition hover:-translate-y-1 hover:border-amber-500/40"
+      aria-label={`Read featured blog ${post.title}`}
+    >
+      <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-amber-500/20 via-zinc-900 to-zinc-950">
+        {post.thumbnail ? (
+          <img src={post.thumbnail} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_35%,rgba(245,158,11,.22),transparent_58%)] text-amber-400">
+            <Icon className="h-20 w-20 opacity-90 transition duration-500 group-hover:scale-110" aria-hidden="true" />
+          </div>
+        )}
+        <span className="absolute left-4 top-4 rounded-full border border-amber-300/30 bg-amber-500 px-3 py-1 text-xs font-black uppercase tracking-wider text-zinc-950 shadow-lg">
+          #1 Popular
+        </span>
+      </div>
+      <div className="p-5 sm:p-6">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400">Most Popular Blogs</p>
+        <h2 className="mt-2 line-clamp-2 text-xl font-black leading-7 text-white transition group-hover:text-amber-300 sm:text-2xl">
+          {post.title}
+        </h2>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
+          <span className="inline-flex items-center gap-1.5"><Heart className="h-3.5 w-3.5" />{formatCount(post.likes)}</span>
+          <span className="inline-flex items-center gap-1.5"><Eye className="h-3.5 w-3.5" />{formatCount(post.views)}</span>
+          <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{post.readingMinutes} min read</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export function MostPopularBlogs() {
   const source = allPosts as PopularPost[];
   if (!source.length) return null;
+  const featuredPost = source[0];
 
   return (
     <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6" aria-labelledby="most-popular-blogs-title">
@@ -81,19 +119,26 @@ export function MostPopularBlogs() {
         @media (prefers-reduced-motion: reduce) { .most-popular-track { animation: none; transform: translateY(0); } }
       `}</style>
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900/45 p-5 shadow-2xl sm:p-7">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-center">
-          <div className="max-w-xl">
-            <span className="inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-300">Most Popular</span>
-            <h2 id="most-popular-blogs-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">Most Popular Blogs</h2>
-            <p className="mt-4 text-sm leading-7 text-zinc-400 sm:text-base">Quick guides for the questions creators ask most. The list uses the same blog source as the rest of the site and loops continuously.</p>
-            <Link to="/blog" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-300">View all blogs <ArrowUpRight className="h-4 w-4" /></Link>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+          <div>
+            <FeaturedPopularCard post={featuredPost} />
+            <Link to="/blog" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-300">
+              View all blogs <ArrowUpRight className="h-4 w-4" />
+            </Link>
           </div>
 
-          <div className="most-popular-window" tabIndex={0} aria-label="Most popular blog list. Hover or focus to pause scrolling.">
-            <div className="most-popular-track">
-              {[...source, ...source].map((post, index) => (
-                <PopularCard key={`${post.slug}-${index}`} post={post} rank={(index % source.length) + 1} />
-              ))}
+          <div>
+            <div className="mb-4">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-400">Most Popular</p>
+              <h2 id="most-popular-blogs-title" className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">Popular blogs</h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">Explore the most useful guides from our blog collection.</p>
+            </div>
+            <div className="most-popular-window" tabIndex={0} aria-label="Most popular blog list. Hover or focus to pause scrolling.">
+              <div className="most-popular-track">
+                {[...source, ...source].map((post, index) => (
+                  <PopularCard key={`${post.slug}-${index}`} post={post} rank={(index % source.length) + 1} />
+                ))}
+              </div>
             </div>
           </div>
         </div>
