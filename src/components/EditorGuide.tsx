@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { BlogMarquee } from "@/components/BlogMarquee";
 
 export function EditorGuide() {
   return (
@@ -92,6 +93,8 @@ Scene 4.mp4`}</code></pre>
 
             <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 sm:p-7"><h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Why We Use This Tool:</h2><div className="mt-5 space-y-4 text-[15px] leading-7 text-zinc-400 sm:text-base"><p>If you are a YouTuber, content creator, or create content for platforms such as Instagram, TikTok, Facebook, YouTube, Snapchat, or other social media platforms, this tool can be very helpful for you.</p><p>It is designed to make your video editing workflow easier and save you a significant amount of time.</p><p>This tool is 100% free.</p><p>Our goal is simply to provide value to people and help them understand how they can make their work easier with the help of AI.</p><p>We would also love to hear from you.</p><p>Please use the Contact Us section to share your thoughts with us and let us know:</p><ul className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900 p-4"><li>What features would you like to see?</li><li>What new tools should we add?</li><li>What options would make the editing process easier for you?</li><li>What improvements would you like to see in the future?</li></ul><p>Your feedback can help us improve the tool and make it more useful for everyone.</p><p>Thanks for reading!</p><p>If you are facing any issue, simply choose the relevant option from the available buttons and read the detailed information to find the solution.</p></div></div>
           </div>
+
+          <BlogMarquee />
 
           <div className="grid grid-cols-1 gap-3 border-t border-zinc-800 bg-zinc-900 px-5 py-6 sm:grid-cols-3 sm:px-8 lg:px-12">
             <Link to="/contact" className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-5 py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-amber-400">Contact Us</Link>
