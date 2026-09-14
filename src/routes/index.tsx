@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { HomePage } from "@/components/MarketingBlocks";
+import { HomePageWithPopular } from "@/components/HomePageWithPopular";
 import { jsonLd, pageSeo, site, breadcrumbLd } from "@/lib/site";
 
 export const Route = createFileRoute("/")({
@@ -12,5 +12,5 @@ export const Route = createFileRoute("/")({
       jsonLd(breadcrumbLd([{ name: "Home", path: "/" }])),
     ],
   }),
-  component: HomePage,
+  component: HomePageWithPopular,
 });
