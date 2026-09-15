@@ -91,8 +91,8 @@ function FeaturedStack({ source }: { source: PopularPost[] }) {
       }}
       aria-label="Featured popular blog cards"
     >
-      <div className="absolute inset-x-4 top-3 h-full rounded-3xl border border-zinc-800/60 bg-amber-300/70" aria-hidden="true" />
-      <div className="absolute inset-x-2 top-1 h-full rounded-3xl border border-zinc-800/80 bg-amber-400/85" aria-hidden="true" />
+      <div className="absolute inset-x-4 top-3 h-full rounded-3xl border border-zinc-800/60 bg-zinc-950/40" aria-hidden="true" />
+      <div className="absolute inset-x-2 top-1 h-full rounded-3xl border border-zinc-800/80 bg-zinc-950/65" aria-hidden="true" />
 
       {visibleCards.map(({ post, offset, sourceIndex }) => {
         const Icon = getPostIcon(post, sourceIndex);
@@ -103,7 +103,7 @@ function FeaturedStack({ source }: { source: PopularPost[] }) {
             key={`${post.slug}-${activeIndex}-${offset}`}
             to="/blog/$slug"
             params={{ slug: post.slug }}
-            className="group absolute inset-x-0 top-0 block overflow-hidden rounded-3xl border border-zinc-800 bg-amber-400 shadow-2xl transition-[transform,opacity,filter] duration-700 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="group absolute inset-x-0 top-0 block overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl transition-[transform,opacity,filter] duration-700 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             style={{
               transform: `translateY(${offset * 14}px) scale(${1 - offset * 0.035})`,
               opacity: offset === visibleCount - 1 ? 0.42 : 1 - offset * 0.13,
@@ -114,29 +114,29 @@ function FeaturedStack({ source }: { source: PopularPost[] }) {
           >
             <div className="relative flex min-h-[360px] flex-col justify-between p-6 sm:min-h-[380px] sm:p-7">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/40 bg-white/25 text-white shadow-inner">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-amber-400/20 bg-amber-500/10 text-amber-400 shadow-inner">
                   <Icon className="h-10 w-10" aria-hidden="true" />
                 </div>
-                <span className="rounded-full border border-white/40 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-950">
+                <span className="rounded-full border border-amber-300/25 bg-amber-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-950">
                   {isActive ? "Featured" : `Next ${offset}`}
                 </span>
               </div>
 
               <div className="mt-8">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white">{post.cluster}</p>
-                <h2 className="mt-3 line-clamp-3 text-2xl font-black leading-8 text-zinc-950 sm:text-3xl">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-400">{post.cluster}</p>
+                <h2 className="mt-3 line-clamp-3 text-2xl font-black leading-8 text-white sm:text-3xl">
                   {post.title}
                 </h2>
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-800">{post.description}</p>
+                <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-400">{post.description}</p>
               </div>
 
               <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4 text-xs text-zinc-800">
+                <div className="flex items-center gap-4 text-xs text-zinc-500">
                   <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{post.readingMinutes} min read</span>
                   {post.likes !== undefined && <span>{formatCount(post.likes)} likes</span>}
                   {post.views !== undefined && <span>{formatCount(post.views)} views</span>}
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-zinc-950 transition group-hover:bg-zinc-950 group-hover:text-white">
+                <span className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-zinc-950 transition group-hover:bg-amber-400">
                   Read Guide <ArrowUpRight className="h-4 w-4" />
                 </span>
               </div>
@@ -149,12 +149,12 @@ function FeaturedStack({ source }: { source: PopularPost[] }) {
         {source.slice(0, Math.min(source.length, 8)).map((post, index) => (
           <span
             key={post.slug}
-            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeIndex % Math.min(source.length, 8) ? "w-7 bg-white" : "w-1.5 bg-zinc-800"}`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeIndex % Math.min(source.length, 8) ? "w-7 bg-amber-400" : "w-1.5 bg-zinc-700"}`}
           />
         ))}
       </div>
 
-      <span className="absolute bottom-0 right-0 z-30 text-[11px] font-medium text-zinc-800">
+      <span className="absolute bottom-0 right-0 z-30 text-[11px] font-medium text-zinc-600">
         {paused ? "Paused — click a card to read" : "Auto-changing featured guides"}
       </span>
     </div>
