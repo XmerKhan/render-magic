@@ -13,6 +13,7 @@ const TRANSITION_PACKS: { value: EditSettings['transitionPack']; label: string; 
   { value: 'smooth', label: 'Smooth', desc: 'Crossfades and zooms, gentle flow' },
   { value: 'dynamic', label: 'Dynamic', desc: 'Whip pans and slides, high energy' },
   { value: 'minimal', label: 'Minimal', desc: 'Hard cuts and simple dissolves' },
+  { value: 'professional', label: 'Professional', desc: 'Camera moves, quick zooms and editorial cuts' },
 ];
 
 const CAPTION_STYLES: { value: EditSettings['captionStyle']; label: string }[] = [
