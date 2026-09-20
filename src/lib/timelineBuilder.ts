@@ -15,6 +15,9 @@ const TRANSITION_POOLS: Record<TransitionPack, TransitionType[]> = {
   smooth: ['crossfade', 'crossfade', 'zoom-blur', 'blur-dissolve', 'wipe-left'],
   dynamic: ['whip-pan', 'slide-left', 'slide-right', 'hard-cut', 'push-left', 'iris-wipe'],
   minimal: ['crossfade', 'hard-cut'],
+  // Professional documentary/editorial mix: controlled camera movement,
+  // quick zooms, whip/push transitions and occasional hard cuts.
+  professional: ['hard-cut', 'zoom-blur', 'whip-pan', 'push-left', 'push-right', 'crossfade', 'slide-left', 'hard-cut'],
 };
 
 function pickTransition(
@@ -35,19 +38,23 @@ const KB_DIRECTIONS: KenBurnsDirection[] = [
   'zoom-out-pan-left', 'zoom-out-pan-right',
 ];
 
-function buildKenBurns(durationSec: number, seed: number): KenBurnsConfig {
+function buildKenBurns(durationSec: number, seed: number, pack: TransitionPack): KenBurnsConfig {
   const pseudo = (n: number) => {
     const x = Math.sin(seed * 9999 + n * 137.5) * 10000;
     return x - Math.floor(x);
   };
 
   const direction = KB_DIRECTIONS[Math.floor(pseudo(0) * KB_DIRECTIONS.length)];
-  const intensity = 0.08 + pseudo(4) * 0.06;
+  // Keep documentary camera movement subtle. Professional mode gets a little
+  // more deliberate push/pan movement without creating aggressive crops.
+  const intensity = pack === 'professional'
+    ? 0.10 + pseudo(4) * 0.07
+    : 0.08 + pseudo(4) * 0.06;
 
   const zoomIn = direction.startsWith('zoom-in') || direction === 'pan-left' || direction === 'pan-right';
   const zoomOut = direction.startsWith('zoom-out');
-  const startScale = zoomOut ? 1.15 : 1.0;
-  const endScale = zoomOut ? 1.0 : zoomIn ? 1.15 : 1.0;
+  const startScale = zoomOut ? (pack === 'professional' ? 1.12 : 1.15) : (pack === 'professional' ? 1.02 : 1.0);
+  const endScale = zoomOut ? (pack === 'professional' ? 1.02 : 1.0) : zoomIn ? (pack === 'professional' ? 1.13 : 1.15) : (pack === 'professional' ? 1.02 : 1.0);
 
   const panX = direction.includes('pan-left') ? -intensity : direction.includes('pan-right') ? intensity : (pseudo(2) - 0.5) * intensity;
   const panY = direction.includes('pan-up') ? -intensity * 0.7 : direction.includes('pan-down') ? intensity * 0.7 : (pseudo(3) - 0.5) * intensity * 0.7;
@@ -131,7 +138,7 @@ export function buildTimeline(
       lowerThird: seg.lowerThird,
       transitionIn: pickTransition(settings.transitionPack, index, sorted.length),
       transitionOut: pickTransition(settings.transitionPack, index + 1, sorted.length),
-      kenBurns: buildKenBurns(durationSec, index + 1),
+      kenBurns: buildKenBurns(durationSec, index + 1, settings.transitionPack),
     });
   });
 
