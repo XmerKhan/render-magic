@@ -1,11 +1,11 @@
 /**
  * Centralized site configuration.
- * Vercel production should set VITE_SITE_URL to https://editsfieldai.online
+ * Vercel production should set VITE_SITE_URL to https://www.editsfieldai.online
  * and VITE_CONTACT_EMAIL to support@editsfieldai.online.
  * The fallbacks below keep canonical URLs and contact links correct even
  * if those environment variables are temporarily missing.
  */
-const FALLBACK_SITE_URL = "https://editsfieldai.online";
+const FALLBACK_SITE_URL = "https://www.editsfieldai.online";
 const FALLBACK_CONTACT_EMAIL = "support@editsfieldai.online";
 
 export const SITE_URL = ((import.meta.env["VITE_SITE_URL"] as string | undefined) || FALLBACK_SITE_URL).replace(/\/+$/, "");
@@ -17,7 +17,7 @@ export const site = {
   description: "Edit videos online with Editsfield AI. Build script-driven timelines, sync scenes to voiceover, add captions, transitions and music, preview your edit, and render the final video in your browser.",
   url: SITE_URL,
   logo: `${SITE_URL}/brand-logo.svg`,
-  socialImage: `${SITE_URL}/og-image.svg`,
+  socialImage: `${SITE_URL}/og-image.jpg`,
   contactEmail: (import.meta.env["VITE_CONTACT_EMAIL"] as string | undefined) || FALLBACK_CONTACT_EMAIL,
 } as const;
 
