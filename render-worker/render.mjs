@@ -23,7 +23,7 @@ if (!Number.isInteger(CHUNK_INDEX) || !Number.isInteger(CHUNK_COUNT) || CHUNK_CO
 }
 
 const WORKER_ENDPOINT = `${APP_URL}/api/public/render-worker`;
-const WORKDIR = fs.mkdtempSync(path.join(os.tmpdir(), `autocut-${CHUNK_INDEX}-`));
+const WORKDIR = fs.mkdtempSync(path.join(os.tmpdir(), `editsfield-ai-${CHUNK_INDEX}-`));
 const PUBLIC_DIR = path.join(WORKDIR, "public");
 const ASSET_DIR = path.join(PUBLIC_DIR, "render-assets");
 const OUTPUT_FILE = path.join(WORKDIR, `chunk-${CHUNK_INDEX}.mp4`);
@@ -36,7 +36,7 @@ async function callApp(body, { retries = 4 } = {}) {
     try {
       const response = await fetch(WORKER_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "User-Agent": "AutoCut-Render-Worker" },
+        headers: { "Content-Type": "application/json", "User-Agent": "EditsfieldAI-Render-Worker" },
         body: JSON.stringify({ ...body, jobId: JOB_ID, jobToken: JOB_TOKEN }),
       });
       const text = await response.text();
