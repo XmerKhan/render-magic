@@ -24,31 +24,31 @@ export interface BlogPost {
   related: string[];
 }
 
-const AUTHOR = "Auto Edit Team";
+const AUTHOR = "Editsfield AI Team";
 export const blogAuthor = AUTHOR;
 
 export const posts: BlogPost[] = [
   {
     slug: "how-to-edit-a-video-online",
     title: "How to Edit a Video Online (Without Installing Software)",
-    metaTitle: "How to Edit a Video Online for Free | Auto Edit",
+    metaTitle: "How to Edit a Video Online for Free | Editsfield AI",
     description:
-      "A step-by-step walkthrough of editing a video online in Auto Edit: add media, supply a timing script, set transitions and captions, preview, then export an MP4.",
+      "A step-by-step walkthrough of editing a video online in Editsfield AI: add media, supply a timing script, set transitions and captions, preview, then export an MP4.",
     cluster: "Beginner video editing",
     datePublished: "2026-06-02",
     dateModified: "2026-08-20",
     readingMinutes: 6,
     summary:
-      "Editing online means your media stays in the browser tab and the export happens on a render server. Here is the exact Auto Edit workflow.",
+      "Editing online means your media stays in the browser tab and the export happens on a render server. Here is the exact Editsfield AI workflow.",
     blocks: [
       {
         t: "p",
-        text: "You can edit a video online in Auto Edit in five steps: add your clips and photos, load a voiceover, supply a timing script, adjust transitions and captions, then export an MP4. No installation and no account are required.",
+        text: "You can edit a video online in Editsfield AI in five steps: add your clips and photos, load a voiceover, supply a timing script, adjust transitions and captions, then export an MP4. No installation and no account are required.",
       },
-      { t: "h2", text: "What online editing actually means in Auto Edit" },
+      { t: "h2", text: "What online editing actually means in Editsfield AI" },
       {
         t: "p",
-        text: "Auto Edit is a browser-based editor. Your media files are read locally by the browser for preview, so nothing is uploaded while you are arranging the edit. Files are only sent to the render service when you press Generate Video, and the finished MP4 comes back as a download link.",
+        text: "Editsfield AI is a browser-based editor. Your media files are read locally by the browser for preview, so nothing is uploaded while you are arranging the edit. Files are only sent to the render service when you press Generate Video, and the finished MP4 comes back as a download link.",
       },
       { t: "h2", text: "Step 1 — Add media to the media bin" },
       {
@@ -58,12 +58,12 @@ export const posts: BlogPost[] = [
       { t: "h2", text: "Step 2 — Add a voiceover and optional music" },
       {
         t: "p",
-        text: "Auto Edit times the edit against your voiceover track, so the voiceover defines the length of the video. Background music is optional and has its own volume control plus auto-ducking, which lowers the music while the voice is speaking.",
+        text: "Editsfield AI times the edit against your voiceover track, so the voiceover defines the length of the video. Background music is optional and has its own volume control plus auto-ducking, which lowers the music while the voice is speaking.",
       },
       { t: "h2", text: "Step 3 — Supply the timing script" },
       {
         t: "p",
-        text: "The script file tells Auto Edit which media appears when. It accepts a JSON segment list or an SRT file. Each segment carries a start time, an end time, the caption text and the media it should show.",
+        text: "The script file tells Editsfield AI which media appears when. It accepts a JSON segment list or an SRT file. Each segment carries a start time, an end time, the caption text and the media it should show.",
       },
       {
         t: "note",
@@ -95,24 +95,24 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-cut-a-video",
     title: "How to Cut a Video: Trimming, Jump Cuts and Pacing",
-    metaTitle: "How to Cut a Video Online | Auto Edit",
+    metaTitle: "How to Cut a Video Online | Editsfield AI",
     description:
-      "Learn how cutting works in Auto Edit: segment boundaries define every cut, and pacing comes from segment length rather than manual dragging.",
+      "Learn how cutting works in Editsfield AI: segment boundaries define every cut, and pacing comes from segment length rather than manual dragging.",
     cluster: "Beginner video editing",
     datePublished: "2026-06-09",
     dateModified: "2026-08-12",
     readingMinutes: 5,
     summary:
-      "In Auto Edit a cut is a segment boundary. Shorter segments mean faster pacing; longer segments let a shot breathe.",
+      "In Editsfield AI a cut is a segment boundary. Shorter segments mean faster pacing; longer segments let a shot breathe.",
     blocks: [
       {
         t: "p",
-        text: "In Auto Edit you cut a video by defining segments. Each segment in the script has a start and an end time, and every boundary between two segments is a cut.",
+        text: "In Editsfield AI you cut a video by defining segments. Each segment in the script has a start and an end time, and every boundary between two segments is a cut.",
       },
       { t: "h2", text: "Why segment-based cutting is different" },
       {
         t: "p",
-        text: "Traditional editors ask you to drag clip edges on a timeline. Auto Edit derives the cut list from the script, so the edit follows your narration exactly. Adjusting a single timestamp re-cuts the video without touching anything else.",
+        text: "Traditional editors ask you to drag clip edges on a timeline. Editsfield AI derives the cut list from the script, so the edit follows your narration exactly. Adjusting a single timestamp re-cuts the video without touching anything else.",
       },
       { t: "h2", text: "Controlling pacing" },
       {
@@ -139,23 +139,23 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-add-captions-to-a-video",
     title: "How to Add Captions to a Video",
-    metaTitle: "How to Add Captions to a Video Online | Auto Edit",
+    metaTitle: "How to Add Captions to a Video Online | Editsfield AI",
     description:
-      "Add captions to a video in Auto Edit using an SRT or JSON script, then pick a caption style, position, font, size and timing offset.",
+      "Add captions to a video in Editsfield AI using an SRT or JSON script, then pick a caption style, position, font, size and timing offset.",
     cluster: "Captions",
     datePublished: "2026-06-16",
     dateModified: "2026-08-18",
     readingMinutes: 5,
     summary:
-      "Auto Edit renders captions from your script text. It does not transcribe audio for you, so bring an SRT or JSON file.",
+      "Editsfield AI renders captions from your script text. It does not transcribe audio for you, so bring an SRT or JSON file.",
     blocks: [
       {
         t: "p",
-        text: "Auto Edit burns captions into the video from the text in your script file. Load an SRT or JSON script, choose a caption style, and the captions appear in the preview and in the exported MP4.",
+        text: "Editsfield AI burns captions into the video from the text in your script file. Load an SRT or JSON script, choose a caption style, and the captions appear in the preview and in the exported MP4.",
       },
       {
         t: "note",
-        text: "Auto Edit does not generate a transcript from your audio. Caption text comes from the file you supply.",
+        text: "Editsfield AI does not generate a transcript from your audio. Caption text comes from the file you supply.",
       },
       { t: "h2", text: "Caption styles" },
       {
@@ -187,9 +187,9 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-add-music-to-a-video",
     title: "How to Add Music to a Video Without Burying the Voiceover",
-    metaTitle: "How to Add Music to a Video Online | Auto Edit",
+    metaTitle: "How to Add Music to a Video Online | Editsfield AI",
     description:
-      "Add background music in Auto Edit, set the music volume, enable auto-ducking, and use loudness normalisation so narration stays clear.",
+      "Add background music in Editsfield AI, set the music volume, enable auto-ducking, and use loudness normalisation so narration stays clear.",
     cluster: "Audio",
     datePublished: "2026-06-23",
     dateModified: "2026-08-10",
@@ -199,7 +199,7 @@ export const posts: BlogPost[] = [
     blocks: [
       {
         t: "p",
-        text: "Add a music file in the media bin, then set its volume and leave auto-ducking on. Auto Edit lowers the music automatically while your voiceover is speaking and brings it back up in the gaps.",
+        text: "Add a music file in the media bin, then set its volume and leave auto-ducking on. Editsfield AI lowers the music automatically while your voiceover is speaking and brings it back up in the gaps.",
       },
       { t: "h2", text: "Starting volume" },
       {
@@ -219,7 +219,7 @@ export const posts: BlogPost[] = [
       { t: "h2", text: "Licensing" },
       {
         t: "p",
-        text: "Auto Edit does not include a music library. Use tracks you have the rights to publish, especially for monetised uploads.",
+        text: "Editsfield AI does not include a music library. Use tracks you have the rights to publish, especially for monetised uploads.",
       },
     ],
     related: ["how-to-edit-a-video-online", "how-to-cut-a-video", "how-to-edit-youtube-videos"],
@@ -227,9 +227,9 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-add-transitions-to-a-video",
     title: "How to Add Transitions to a Video (And When Not To)",
-    metaTitle: "How to Add Video Transitions Online | Auto Edit",
+    metaTitle: "How to Add Video Transitions Online | Editsfield AI",
     description:
-      "Choose a transition pack in Auto Edit, set the transition duration, and override individual scene transitions on the timeline.",
+      "Choose a transition pack in Editsfield AI, set the transition duration, and override individual scene transitions on the timeline.",
     cluster: "Transitions",
     datePublished: "2026-06-30",
     dateModified: "2026-08-14",
@@ -239,7 +239,7 @@ export const posts: BlogPost[] = [
     blocks: [
       {
         t: "p",
-        text: "Pick a transition pack in the settings panel, set the duration, and Auto Edit applies transitions across every cut. Individual scenes can be overridden from the timeline strip.",
+        text: "Pick a transition pack in the settings panel, set the duration, and Editsfield AI applies transitions across every cut. Individual scenes can be overridden from the timeline strip.",
       },
       { t: "h2", text: "The four packs" },
       {
@@ -267,9 +267,9 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-edit-youtube-videos",
     title: "How to Edit YouTube Videos Online",
-    metaTitle: "How to Edit YouTube Videos Online Free | Auto Edit",
+    metaTitle: "How to Edit YouTube Videos Online Free | Editsfield AI",
     description:
-      "A practical Auto Edit workflow for 16:9 YouTube uploads: export settings, caption placement, pacing and audio levels.",
+      "A practical Editsfield AI workflow for 16:9 YouTube uploads: export settings, caption placement, pacing and audio levels.",
     cluster: "YouTube",
     datePublished: "2026-07-07",
     dateModified: "2026-08-16",
@@ -278,7 +278,7 @@ export const posts: BlogPost[] = [
     blocks: [
       {
         t: "p",
-        text: "For a standard YouTube upload, set the aspect ratio to 16:9 and export at 1080p. Auto Edit produces an MP4 you can upload directly.",
+        text: "For a standard YouTube upload, set the aspect ratio to 16:9 and export at 1080p. Editsfield AI produces an MP4 you can upload directly.",
       },
       { t: "h2", text: "Recommended settings" },
       {
@@ -298,7 +298,7 @@ export const posts: BlogPost[] = [
       { t: "h2", text: "Intro and outro" },
       {
         t: "p",
-        text: "Auto Edit includes optional intro and outro cards with a title, subtitle and channel name. Keep the intro under two seconds — long branded intros lose retention.",
+        text: "Editsfield AI includes optional intro and outro cards with a title, subtitle and channel name. Keep the intro under two seconds — long branded intros lose retention.",
       },
     ],
     related: ["how-to-edit-youtube-shorts", "how-to-add-captions-to-a-video", "how-to-add-music-to-a-video"],
@@ -306,9 +306,9 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-edit-youtube-shorts",
     title: "How to Edit YouTube Shorts: Dimensions, Pacing and Captions",
-    metaTitle: "How to Edit YouTube Shorts Online | Auto Edit",
+    metaTitle: "How to Edit YouTube Shorts Online | Editsfield AI",
     description:
-      "Edit YouTube Shorts in Auto Edit with a 9:16 aspect ratio, 1080x1920 export, tight segments and safe caption placement.",
+      "Edit YouTube Shorts in Editsfield AI with a 9:16 aspect ratio, 1080x1920 export, tight segments and safe caption placement.",
     cluster: "Shorts",
     datePublished: "2026-07-14",
     dateModified: "2026-08-19",
@@ -317,7 +317,7 @@ export const posts: BlogPost[] = [
     blocks: [
       {
         t: "p",
-        text: "YouTube Shorts are vertical. Set the aspect ratio to 9:16 in Auto Edit and export at 1080p, which gives a 1080x1920 MP4.",
+        text: "YouTube Shorts are vertical. Set the aspect ratio to 9:16 in Editsfield AI and export at 1080p, which gives a 1080x1920 MP4.",
       },
       { t: "h2", text: "Safe areas" },
       {
@@ -348,9 +348,9 @@ export const posts: BlogPost[] = [
   {
     slug: "best-video-dimensions-for-youtube-shorts",
     title: "Best Video Dimensions for YouTube Shorts, TikTok and Reels",
-    metaTitle: "Best Video Dimensions for Shorts, TikTok & Reels | Auto Edit",
+    metaTitle: "Best Video Dimensions for Shorts, TikTok & Reels | Editsfield AI",
     description:
-      "Reference dimensions for vertical short-form video, plus the Auto Edit aspect ratio and export resolution that produce each one.",
+      "Reference dimensions for vertical short-form video, plus the Editsfield AI aspect ratio and export resolution that produce each one.",
     cluster: "Export settings",
     datePublished: "2026-07-21",
     dateModified: "2026-08-15",
@@ -359,7 +359,7 @@ export const posts: BlogPost[] = [
     blocks: [
       {
         t: "p",
-        text: "For YouTube Shorts, TikTok and Instagram Reels, use 9:16. At 1080p that is 1080x1920. Auto Edit derives the pixel dimensions from the aspect ratio and export resolution you select.",
+        text: "For YouTube Shorts, TikTok and Instagram Reels, use 9:16. At 1080p that is 1080x1920. Editsfield AI derives the pixel dimensions from the aspect ratio and export resolution you select.",
       },
       { t: "h2", text: "Quick reference" },
       {
@@ -387,9 +387,9 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-edit-videos-for-tiktok",
     title: "How to Edit Videos for TikTok Online",
-    metaTitle: "How to Edit TikTok Videos Online Free | Auto Edit",
+    metaTitle: "How to Edit TikTok Videos Online Free | Editsfield AI",
     description:
-      "A vertical TikTok editing workflow in Auto Edit: 9:16 canvas, fast segments, karaoke captions and a clean MP4 export.",
+      "A vertical TikTok editing workflow in Editsfield AI: 9:16 canvas, fast segments, karaoke captions and a clean MP4 export.",
     cluster: "TikTok",
     datePublished: "2026-07-28",
     dateModified: "2026-08-17",
@@ -398,7 +398,7 @@ export const posts: BlogPost[] = [
     blocks: [
       {
         t: "p",
-        text: "Set Auto Edit to 9:16, keep segments short, and turn on captions. Export at 1080p and upload the MP4 to TikTok.",
+        text: "Set Editsfield AI to 9:16, keep segments short, and turn on captions. Export at 1080p and upload the MP4 to TikTok.",
       },
       { t: "h2", text: "Why on-screen text matters" },
       {
@@ -429,9 +429,9 @@ export const posts: BlogPost[] = [
   {
     slug: "how-to-edit-instagram-reels",
     title: "How to Edit Instagram Reels Online",
-    metaTitle: "How to Edit Instagram Reels Online Free | Auto Edit",
+    metaTitle: "How to Edit Instagram Reels Online Free | Editsfield AI",
     description:
-      "Edit Instagram Reels in Auto Edit: 9:16 canvas, caption placement that avoids the Reels UI, colour grading and MP4 export.",
+      "Edit Instagram Reels in Editsfield AI: 9:16 canvas, caption placement that avoids the Reels UI, colour grading and MP4 export.",
     cluster: "Instagram",
     datePublished: "2026-08-04",
     dateModified: "2026-08-18",
@@ -440,12 +440,12 @@ export const posts: BlogPost[] = [
     blocks: [
       {
         t: "p",
-        text: "Instagram Reels use a 9:16 vertical frame. Set that aspect ratio in Auto Edit, export at 1080p, and download the MP4 for upload.",
+        text: "Instagram Reels use a 9:16 vertical frame. Set that aspect ratio in Editsfield AI, export at 1080p, and download the MP4 for upload.",
       },
       { t: "h2", text: "Caption placement" },
       {
         t: "p",
-        text: "Instagram overlays the post caption and action buttons over the lower portion of the frame. Lower-third placement inside Auto Edit sits above that area; centre placement is a safe alternative for text-heavy Reels.",
+        text: "Instagram overlays the post caption and action buttons over the lower portion of the frame. Lower-third placement inside Editsfield AI sits above that area; centre placement is a safe alternative for text-heavy Reels.",
       },
       { t: "h2", text: "A consistent look" },
       {
@@ -463,7 +463,7 @@ export const posts: BlogPost[] = [
   {
     slug: "what-is-video-editing",
     title: "What Is Video Editing?",
-    metaTitle: "What Is Video Editing? A Plain Definition | Auto Edit",
+    metaTitle: "What Is Video Editing? A Plain Definition | Editsfield AI",
     description:
       "Video editing is selecting, trimming and arranging footage, audio and text into a finished sequence. Here is what each stage involves.",
     cluster: "Educational",
@@ -495,7 +495,7 @@ export const posts: BlogPost[] = [
       { t: "h2", text: "How automated editors fit in" },
       {
         t: "p",
-        text: "Auto Edit handles timing, transitions, captions and colour from a script and a voiceover, which removes the manual dragging while leaving the creative decisions with you.",
+        text: "Editsfield AI handles timing, transitions, captions and colour from a script and a voiceover, which removes the manual dragging while leaving the creative decisions with you.",
       },
     ],
     related: ["what-is-a-jump-cut", "what-is-a-video-transition", "how-to-edit-a-video-online"],
@@ -503,7 +503,7 @@ export const posts: BlogPost[] = [
   {
     slug: "what-is-a-jump-cut",
     title: "What Is a Jump Cut?",
-    metaTitle: "What Is a Jump Cut? Definition and Use | Auto Edit",
+    metaTitle: "What Is a Jump Cut? Definition and Use | Editsfield AI",
     description:
       "A jump cut removes time from a continuous shot. Learn what it does, why creators use it, and when it becomes distracting.",
     cluster: "Educational",
@@ -526,7 +526,7 @@ export const posts: BlogPost[] = [
         t: "p",
         text: "Cutting on every breath makes a video feel frantic and hides emphasis. Keep the pauses that carry meaning.",
       },
-      { t: "h2", text: "Doing it in Auto Edit" },
+      { t: "h2", text: "Doing it in Editsfield AI" },
       {
         t: "p",
         text: "Set the affected boundary to a hard cut and enable trim silence so removed pauses do not leave dead audio.",
@@ -537,7 +537,7 @@ export const posts: BlogPost[] = [
   {
     slug: "what-is-a-video-transition",
     title: "What Is a Video Transition?",
-    metaTitle: "What Is a Video Transition? Types Explained | Auto Edit",
+    metaTitle: "What Is a Video Transition? Types Explained | Editsfield AI",
     description:
       "A transition is how one shot becomes the next. Here are the common types, what each one signals, and sensible durations.",
     cluster: "Educational",
@@ -567,7 +567,7 @@ export const posts: BlogPost[] = [
         t: "p",
         text: "Most transitions belong between 0.2 and 0.5 seconds. Anything longer needs a reason.",
       },
-      { t: "h2", text: "In Auto Edit" },
+      { t: "h2", text: "In Editsfield AI" },
       {
         t: "p",
         text: "Transition packs apply a consistent set across the edit, and you can change any individual scene transition from the timeline strip.",
@@ -578,7 +578,7 @@ export const posts: BlogPost[] = [
   {
     slug: "what-is-an-aspect-ratio",
     title: "What Is an Aspect Ratio?",
-    metaTitle: "What Is an Aspect Ratio in Video? | Auto Edit",
+    metaTitle: "What Is an Aspect Ratio in Video? | Editsfield AI",
     description:
       "Aspect ratio is the shape of the video frame, written as width to height. Here is what 16:9, 9:16, 1:1 and 4:5 are used for.",
     cluster: "Educational",
@@ -604,7 +604,7 @@ export const posts: BlogPost[] = [
       { t: "h2", text: "Ratio versus resolution" },
       {
         t: "p",
-        text: "1920x1080 and 1280x720 are both 16:9. Ratio is shape; resolution is pixel count. Auto Edit combines the two: pick the aspect ratio, then pick 720p, 1080p or 4K.",
+        text: "1920x1080 and 1280x720 are both 16:9. Ratio is shape; resolution is pixel count. Editsfield AI combines the two: pick the aspect ratio, then pick 720p, 1080p or 4K.",
       },
       { t: "h2", text: "Choose the ratio before you shoot" },
       {
