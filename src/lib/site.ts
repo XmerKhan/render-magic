@@ -1,10 +1,15 @@
 /**
  * Centralized site configuration.
- * Set VITE_SITE_URL to the production custom domain before deploying so that
- * canonical URLs, Open Graph URLs and sitemap.xml all use one canonical host.
+ * Vercel production should set VITE_SITE_URL to https://editsfieldai.online
+ * and VITE_CONTACT_EMAIL to support@editsfieldai.online.
+ * The fallbacks below keep canonical URLs and contact links correct even
+ * if those environment variables are temporarily missing.
  */
-const FALLBACK_SITE_URL = "https://autoeditors.lovable.app";
+const FALLBACK_SITE_URL = "https://editsfieldai.online";
+const FALLBACK_CONTACT_EMAIL = "support@editsfieldai.online";
+
 export const SITE_URL = ((import.meta.env["VITE_SITE_URL"] as string | undefined) || FALLBACK_SITE_URL).replace(/\/+$/, "");
+
 export const site = {
   name: "Editsfield AI",
   tagline: "Free Online Video Editing Tool for Creators",
@@ -12,13 +17,16 @@ export const site = {
   description: "Edit videos online with Editsfield AI. Build script-driven timelines, sync scenes to voiceover, add captions, transitions and music, preview your edit, and render the final video in your browser.",
   url: SITE_URL,
   socialImage: `${SITE_URL}/og-image.svg`,
-  contactEmail: (import.meta.env["VITE_CONTACT_EMAIL"] as string | undefined) || null,
+  contactEmail: (import.meta.env["VITE_CONTACT_EMAIL"] as string | undefined) || FALLBACK_CONTACT_EMAIL,
 } as const;
+
 export function absoluteUrl(path: string): string {
   if (path === "/") return `${SITE_URL}/`;
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
+
 type MetaEntry = Record<string, string>;
+
 export interface PageSeoOptions {
   title: string;
   description: string;
@@ -29,6 +37,7 @@ export interface PageSeoOptions {
   publishedTime?: string;
   modifiedTime?: string;
 }
+
 export function pageSeo(options: PageSeoOptions): { meta: MetaEntry[]; links: MetaEntry[] } {
   const url = absoluteUrl(options.path);
   const image = options.image ?? site.socialImage;
@@ -54,9 +63,11 @@ export function pageSeo(options: PageSeoOptions): { meta: MetaEntry[]; links: Me
   if (options.modifiedTime) meta.push({ property: "article:modified_time", content: options.modifiedTime });
   return { meta, links: [{ rel: "canonical", href: url }] };
 }
+
 export function jsonLd(data: unknown) {
   return { type: "application/ld+json", children: JSON.stringify(data) };
 }
+
 export function breadcrumbLd(items: { name: string; path: string }[]) {
   return {
     "@context": "https://schema.org",
