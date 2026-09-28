@@ -1,6 +1,6 @@
-# Auto Edit
+# Editsfield AI
 
-Auto Edit is a browser-based video editor for narration-led creator videos.
+Editsfield AI is a browser-based video editor for narration-led creator videos.
 
 ## Product
 - Editor: /editor
