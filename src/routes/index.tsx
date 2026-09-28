@@ -6,9 +6,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     ...pageSeo({ title: `${site.name} — ${site.tagline}`, description: site.description, path: "/" }),
     scripts: [
-      jsonLd({ "@context": "https://schema.org", "@type": "Organization", name: site.name, url: site.url, logo: site.socialImage }),
+      jsonLd({ "@context": "https://schema.org", "@type": "Organization", name: site.name, url: site.url, logo: site.logo }),
       jsonLd({ "@context": "https://schema.org", "@type": "WebSite", name: site.name, url: site.url, description: site.description }),
-      jsonLd({ "@context": "https://schema.org", "@type": "SoftwareApplication", name: site.name, applicationCategory: "MultimediaApplication", operatingSystem: "Web", description: site.description, url: site.url }),
+      jsonLd({ "@context": "https://schema.org", "@type": "SoftwareApplication", name: site.name, applicationCategory: "MultimediaApplication", operatingSystem: "Web", description: site.description, url: site.url, image: site.logo }),
       jsonLd(breadcrumbLd([{ name: "Home", path: "/" }])),
     ],
   }),
