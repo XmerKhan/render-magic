@@ -58,7 +58,7 @@ export const createRenderJob = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const jobId = crypto.randomUUID();
-    const outputPath = `${jobId}/autocut-${jobId}.mp4`;
+    const outputPath = `${jobId}/editsfield-ai-${jobId}.mp4`;
 
     const assetPaths: Record<string, string> = {};
     const targets: RenderUploadTarget[] = [];
@@ -202,7 +202,7 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
           "X-GitHub-Api-Version": "2022-11-28",
           // GitHub rejects API requests without a User-Agent with a 403.
-          "User-Agent": "AutoCut-Render-Dispatcher",
+          "User-Agent": "EditsfieldAI-Render-Dispatcher",
         },
 
         body: JSON.stringify({
@@ -283,7 +283,7 @@ export const getRenderJob = createServerFn({ method: "POST" })
       const { data: signed, error: signError } = await supabaseAdmin.storage
         .from(OUTPUT_BUCKET)
         .createSignedUrl(job.output_path, DOWNLOAD_URL_TTL, {
-          download: `autocut-${job.id}.mp4`,
+          download: `editsfield-ai-${job.id}.mp4`,
         });
       if (signError || !signed) {
         console.error("[getRenderJob] signing download failed", signError);
