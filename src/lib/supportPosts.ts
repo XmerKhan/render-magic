@@ -9,7 +9,7 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'how-to-use-auto-sync',
     title: 'How to Use Auto Sync: Match Your Script to a Word-Timestamp Transcript',
-    metaTitle: 'How to Use Auto Sync for Video Editing | Auto Edit',
+    metaTitle: 'How to Use Auto Sync for Video Editing | Editsfield AI',
     description: 'A beginner-friendly guide to Auto Sync: prepare your voiceover, original script, word-level transcript and scene order, then build a synced timeline automatically.',
     cluster: 'Auto Sync',
     datePublished: '2026-09-14',
@@ -31,7 +31,7 @@ export const supportPosts: BlogPost[] = [
       { t: 'h2', text: 'The easiest script format' },
       { t: 'p', text: 'For a beginner, the safest format is plain text with one narration line per scene. For example: Scene 1 text on line one, Scene 2 text on line two, and so on. Avoid putting two separate scenes on one line.' },
       { t: 'h2', text: 'What the word transcript should look like' },
-      { t: 'p', text: 'A word-level transcript contains the spoken word plus its timing. Auto Edit accepts JSON fields such as word, startOffset and endOffset, including values written like 0.200s. It also accepts other supported start and end time field names.' },
+      { t: 'p', text: 'A word-level transcript contains the spoken word plus its timing. Editsfield AI accepts JSON fields such as word, startOffset and endOffset, including values written like 0.200s. It also accepts other supported start and end time field names.' },
       { t: 'note', text: 'The script and transcript must describe the same narration in the same order. They do not have to use identical punctuation, but missing or heavily rewritten sentences can make a match less reliable.' },
       { t: 'h2', text: 'Why the timeline may look different from your old manual timestamps' },
       { t: 'p', text: 'Auto Sync uses the spoken transcript as the timing source. This means a scene may start a little earlier or later than a timestamp you typed manually. That is expected: the goal is to put the visual change at the point where that narration begins.' },
@@ -51,7 +51,7 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'auto-sync-script-transcript-troubleshooting',
     title: 'Auto Sync Not Matching Your Script? Common Causes and Fixes',
-    metaTitle: 'Auto Sync Not Matching Script: Troubleshooting Guide | Auto Edit',
+    metaTitle: 'Auto Sync Not Matching Script: Troubleshooting Guide | Editsfield AI',
     description: 'Fix common Auto Sync matching problems caused by changed narration, missing transcript words, wrong scene counts, formatting issues and incorrect file order.',
     cluster: 'Auto Sync',
     datePublished: '2026-09-14',
@@ -87,8 +87,8 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'word-timestamp-transcript-format',
     title: 'Word Timestamp Transcript Format: What Your File Should Contain',
-    metaTitle: 'Word Timestamp Transcript Format Explained | Auto Edit',
-    description: 'Learn the simple word-level transcript structure Auto Edit needs for automatic scene timing, including word, start time and end time fields.',
+    metaTitle: 'Word Timestamp Transcript Format Explained | Editsfield AI',
+    description: 'Learn the simple word-level transcript structure Editsfield AI needs for automatic scene timing, including word, start time and end time fields.',
     cluster: 'Auto Sync',
     datePublished: '2026-09-14',
     dateModified: '2026-09-14',
@@ -119,14 +119,14 @@ export const supportPosts: BlogPost[] = [
       ] },
       { t: 'h2', text: 'How to test the file before a long edit' },
       { t: 'p', text: 'Use a short voiceover and a small script first. If the first few scenes line up correctly, the same structure can be used for a longer documentary or narrated video. This makes troubleshooting much easier than testing a large project first.' },
-      { t: 'note', text: 'Auto Edit supports more than one timestamp field style, but your safest approach is to keep one consistent structure throughout the file.' }
+      { t: 'note', text: 'Editsfield AI supports more than one timestamp field style, but your safest approach is to keep one consistent structure throughout the file.' }
     ],
     related: ['how-to-use-auto-sync', 'auto-sync-script-transcript-troubleshooting', 'voiceover-and-timeline-duration-explained']
   },
   {
     slug: 'scene-order-does-not-match-media',
     title: 'Scene Order Does Not Match Your Media? How to Fix It',
-    metaTitle: 'Scene Order and Media Mismatch: Fix Your Video Timeline | Auto Edit',
+    metaTitle: 'Scene Order and Media Mismatch: Fix Your Video Timeline | Editsfield AI',
     description: 'Fix scene-order problems when your script has the right number of lines but the wrong images or videos appear in the timeline.',
     cluster: 'Troubleshooting',
     datePublished: '2026-09-14',
@@ -158,8 +158,8 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'voiceover-and-timeline-duration-explained',
     title: 'Why Your Video Timeline Duration Does Not Match the Voiceover',
-    metaTitle: 'Video Timeline and Voiceover Duration Explained | Auto Edit',
-    description: 'Understand why a video timeline can appear shorter or longer than its voiceover and how Auto Edit keeps scene timing connected to the narration.',
+    metaTitle: 'Video Timeline and Voiceover Duration Explained | Editsfield AI',
+    description: 'Understand why a video timeline can appear shorter or longer than its voiceover and how Editsfield AI keeps scene timing connected to the narration.',
     cluster: 'Troubleshooting',
     datePublished: '2026-09-14',
     dateModified: '2026-09-14',
@@ -168,7 +168,7 @@ export const supportPosts: BlogPost[] = [
     blocks: [
       { t: 'p', text: 'When a narrated video ends too early, the first thing to check is not the export button. Check the relationship between the scene timestamps and the voiceover duration. A timeline can only play the final audio correctly when its scene range reaches the end of the narration.' },
       { t: 'h2', text: 'Why the final scene is special' },
-      { t: 'p', text: 'Most scene boundaries are defined by the start of the next scene. The final scene has no next scene, so it must remain on screen until the end of the available narration. Auto Edit extends the final synced scene to the measured voiceover duration when needed.' },
+      { t: 'p', text: 'Most scene boundaries are defined by the start of the next scene. The final scene has no next scene, so it must remain on screen until the end of the available narration. Editsfield AI extends the final synced scene to the measured voiceover duration when needed.' },
       { t: 'h2', text: 'What a normal timeline looks like' },
       { t: 'p', text: 'Scene 1 starts at the first timestamp. Scene 2 starts at the next timestamp. Scene 3 starts at the next one, and so on. Each visual therefore stays on screen until the next visual takes over.' },
       { t: 'h2', text: 'What causes an early ending' },
@@ -196,7 +196,7 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'render-taking-too-long-or-seems-stuck',
     title: 'Video Render Taking Too Long or Looks Stuck? What Is Happening',
-    metaTitle: 'Video Render Taking Too Long: Troubleshooting Guide | Auto Edit',
+    metaTitle: 'Video Render Taking Too Long: Troubleshooting Guide | Editsfield AI',
     description: 'Understand why a long video render can take time, how chunked rendering works, and what to check before restarting a job.',
     cluster: 'Troubleshooting',
     datePublished: '2026-09-14',
@@ -235,7 +235,7 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'video-has-black-bars-or-cropped-subject',
     title: 'Video Has Black Bars or the Subject Looks Too Cropped? How to Fix Framing',
-    metaTitle: 'Fix Black Bars and Cropped Video Framing | Auto Edit',
+    metaTitle: 'Fix Black Bars and Cropped Video Framing | Editsfield AI',
     description: 'Learn why aspect ratio changes can crop footage, how to choose a matching canvas, and how to avoid black edges without losing the main subject.',
     cluster: 'Troubleshooting',
     datePublished: '2026-09-14',
@@ -267,7 +267,7 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'captions-out-of-sync-with-voice',
     title: 'Captions Are Out of Sync With the Voice? Easy Timing Fixes',
-    metaTitle: 'Fix Captions Out of Sync With Voice | Auto Edit',
+    metaTitle: 'Fix Captions Out of Sync With Voice | Editsfield AI',
     description: 'Learn how to diagnose captions that appear too early or too late and when to use a caption timing offset instead of rewriting the whole script.',
     cluster: 'Troubleshooting',
     datePublished: '2026-09-14',
@@ -277,7 +277,7 @@ export const supportPosts: BlogPost[] = [
     blocks: [
       { t: 'p', text: 'Captions feel wrong when the words appear before or after the person speaks them. The first step is to find out whether the entire caption track is shifted or only one part of the video is incorrect.' },
       { t: 'h2', text: 'If every caption is early or late' },
-      { t: 'p', text: 'When the same timing error appears from the beginning to the end, a global timing offset is usually the right type of fix. Auto Edit provides a caption timing offset in milliseconds so you do not have to rewrite every timestamp.' },
+      { t: 'p', text: 'When the same timing error appears from the beginning to the end, a global timing offset is usually the right type of fix. Editsfield AI provides a caption timing offset in milliseconds so you do not have to rewrite every timestamp.' },
       { t: 'h2', text: 'If only one scene is wrong' },
       { t: 'p', text: 'A local problem usually points to the source script or timestamp around that scene. Check that scene\'s text and its neighbouring timestamps instead of moving the entire caption track.' },
       { t: 'h2', text: 'Check the voiceover first' },
@@ -298,7 +298,7 @@ export const supportPosts: BlogPost[] = [
   {
     slug: 'why-auto-sync-may-take-time',
     title: 'Why Auto Sync May Take Time on a Large Project',
-    metaTitle: 'Why Auto Sync Takes Time on Large Projects | Auto Edit',
+    metaTitle: 'Why Auto Sync Takes Time on Large Projects | Editsfield AI',
     description: 'Understand what Auto Sync is doing when it matches a large script against a word-level transcript and how to troubleshoot a slow browser tab.',
     cluster: 'Auto Sync',
     datePublished: '2026-09-14',
