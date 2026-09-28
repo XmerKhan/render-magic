@@ -23,7 +23,6 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
-import { Route as SitemapXmlRouteImport } from './routes/sitemap.xml'
 import { Route as ApiPublicRenderWorkerRouteImport } from './routes/api/public/render-worker'
 
 const IndexRoute = IndexRouteImport.update({
@@ -96,11 +95,6 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
-const SitemapXmlRoute = SitemapXmlRouteImport.update({
-  id: '/sitemap/xml',
-  path: '/sitemap/xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicRenderWorkerRoute = ApiPublicRenderWorkerRouteImport.update({
   id: '/api/public/render-worker',
   path: '/api/public/render-worker',
@@ -121,7 +115,6 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/sitemap/xml': typeof SitemapXmlRoute
   '/blog/': typeof BlogIndexRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
 }
@@ -138,7 +131,6 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/sitemap/xml': typeof SitemapXmlRoute
   '/blog': typeof BlogIndexRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
 }
@@ -157,7 +149,6 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/sitemap/xml': typeof SitemapXmlRoute
   '/blog/': typeof BlogIndexRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
 }
@@ -177,7 +168,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/blog/$slug'
-    | '/sitemap/xml'
     | '/blog/'
     | '/api/public/render-worker'
   fileRoutesByTo: FileRoutesByTo
@@ -194,7 +184,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/blog/$slug'
-    | '/sitemap/xml'
     | '/blog'
     | '/api/public/render-worker'
   id:
@@ -212,7 +201,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/blog/$slug'
-    | '/sitemap/xml'
     | '/blog/'
     | '/api/public/render-worker'
   fileRoutesById: FileRoutesById
@@ -230,7 +218,6 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
-  SitemapXmlRoute: typeof SitemapXmlRoute
   ApiPublicRenderWorkerRoute: typeof ApiPublicRenderWorkerRoute
 }
 
@@ -334,13 +321,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
-    '/sitemap/xml': {
-      id: '/sitemap/xml'
-      path: '/sitemap/xml'
-      fullPath: '/sitemap/xml'
-      preLoaderRoute: typeof SitemapXmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/render-worker': {
       id: '/api/public/render-worker'
       path: '/api/public/render-worker'
@@ -376,7 +356,6 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
-  SitemapXmlRoute: SitemapXmlRoute,
   ApiPublicRenderWorkerRoute: ApiPublicRenderWorkerRoute,
 }
 export const routeTree = rootRouteImport
