@@ -16,6 +16,7 @@ export const site = {
   shortDescription: "Free online video editing software for creators.",
   description: "Edit videos online with Editsfield AI. Build script-driven timelines, sync scenes to voiceover, add captions, transitions and music, preview your edit, and render the final video in your browser.",
   url: SITE_URL,
+  logo: `${SITE_URL}/brand-logo.svg`,
   socialImage: `${SITE_URL}/og-image.svg`,
   contactEmail: (import.meta.env["VITE_CONTACT_EMAIL"] as string | undefined) || FALLBACK_CONTACT_EMAIL,
 } as const;
