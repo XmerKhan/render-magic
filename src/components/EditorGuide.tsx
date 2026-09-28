@@ -7,7 +7,7 @@ export function EditorGuide() {
       <div className="mx-auto max-w-5xl">
         <article className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/80 shadow-2xl">
           <div className="border-b border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-900/70 px-5 py-8 sm:px-8 sm:py-10 lg:px-12">
-            <div className="mb-3 inline-flex rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">Auto Edit Studio Guide</div>
+            <div className="mb-3 inline-flex rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">Editsfield AI Guide</div>
             <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Hi, Editor</h2>
             <div className="mt-5 space-y-4 text-[15px] leading-7 text-zinc-400 sm:text-base">
               <p>Thank you so much for using our tool. Our goal is to make things easier for people. By using our website and this tool, you can complete hours of video editing work in just a few minutes. Our main purpose is to provide convenience with the help of AI.</p>
