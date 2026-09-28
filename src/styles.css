@@ -153,14 +153,14 @@
 }
 
 @media (max-width: 1023px) {
-  .auto-edit-editor { min-width: 0; max-width: 100vw; }
-  .auto-edit-editor .overflow-y-auto { scrollbar-width: thin; }
+  .editsfield-editor { min-width: 0; max-width: 100vw; }
+  .editsfield-editor .overflow-y-auto { scrollbar-width: thin; }
 }
 
 @media (max-width: 380px) {
-  .auto-edit-editor header { padding-left: 0.5rem; padding-right: 0.5rem; }
-  .auto-edit-editor header .w-8 { width: 1.75rem; height: 1.75rem; }
-  .auto-edit-editor header .text-sm { font-size: 0.75rem; }
-  .auto-edit-editor .max-h-\[42vh\] { max-height: 45vh; }
-  .auto-edit-editor .max-h-\[48vh\] { max-height: 52vh; }
+  .editsfield-editor header { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .editsfield-editor header .w-8 { width: 1.75rem; height: 1.75rem; }
+  .editsfield-editor header .text-sm { font-size: 0.75rem; }
+  .editsfield-editor .max-h-\[42vh\] { max-height: 45vh; }
+  .editsfield-editor .max-h-\[48vh\] { max-height: 52vh; }
 }
