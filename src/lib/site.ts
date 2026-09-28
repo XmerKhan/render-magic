@@ -6,10 +6,10 @@
 const FALLBACK_SITE_URL = "https://autoeditors.lovable.app";
 export const SITE_URL = ((import.meta.env["VITE_SITE_URL"] as string | undefined) || FALLBACK_SITE_URL).replace(/\/+$/, "");
 export const site = {
-  name: "Auto Edit Studio",
+  name: "Editsfield AI",
   tagline: "Free Online Video Editing Tool for Creators",
   shortDescription: "Free online video editing software for creators.",
-  description: "Edit videos online with Auto Edit Studio. Build script-driven timelines, sync scenes to voiceover, add captions, transitions and music, preview your edit, and render the final video in your browser.",
+  description: "Edit videos online with Editsfield AI. Build script-driven timelines, sync scenes to voiceover, add captions, transitions and music, preview your edit, and render the final video in your browser.",
   url: SITE_URL,
   socialImage: `${SITE_URL}/og-image.svg`,
   contactEmail: (import.meta.env["VITE_CONTACT_EMAIL"] as string | undefined) || null,
