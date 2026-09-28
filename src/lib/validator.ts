@@ -122,7 +122,7 @@ function parseJsonScript(content: string): ScriptSegment[] {
     arr = [parsed];
   }
 
-  console.log('[AutoCut] Parsed script JSON:', JSON.stringify(arr, null, 2));
+  console.log('[Editsfield AI] Parsed script JSON:', JSON.stringify(arr, null, 2));
 
   return (arr as Record<string, unknown>[]).map((item, i) => ({
     sceneId: String(item.sceneId ?? `scene${i + 1}`),
