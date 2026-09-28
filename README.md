@@ -1,6 +1,6 @@
 # Render Magic
 
-I'm giving you a full zip of an existing project — a video editing web app ("AutoCut Studio") built with React/Vite (frontend) and Node.js/Express + Remotion (backend). Please review the entire project, fix any bugs you find, and importantly: **redesign the video export/render architecture**, because the current approach isn't working reliably.
+I'm giving you a full zip of an existing project — a video editing web app ("Editsfield AI") built with React/Vite (frontend) and Node.js/Express + Remotion (backend). Please review the entire project, fix any bugs you find, and importantly: **redesign the video export/render architecture**, because the current approach isn't working reliably.
 
 ## Context: what's been tried and why it failed
 
