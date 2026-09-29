@@ -35,6 +35,13 @@ export const VideoComposition: React.FC<{
   const introFrames = settings.showIntro ? Math.round(3 * fps) : 0;
   const outroFrames = settings.showOutro ? Math.round(3 * fps) : 0;
 
+  // Professional mode is designed for snap edits, not long dissolves.
+  // Keep transitions in the fast editorial range even if the general
+  // duration slider is set higher for another transition pack.
+  const effectiveTransitionDurationSec = settings.transitionPack === "professional"
+    ? Math.min(settings.transitionDuration, 0.28)
+    : settings.transitionDuration;
+
   const scenesFrames = getAuthoritativeSceneFrames(timeline, fps);
 
   const voiceoverFrames = Math.max(
@@ -130,7 +137,7 @@ export const VideoComposition: React.FC<{
               : getTransition(
                   scene.transitionOut,
                   fps,
-                  settings.transitionDuration,
+                  effectiveTransitionDurationSec,
                   width,
                   height,
                   transitionMaxFrames,
@@ -164,7 +171,7 @@ export const VideoComposition: React.FC<{
               const { presentation, timing } = getTransition(
                 scene.transitionOut,
                 fps,
-                settings.transitionDuration,
+                effectiveTransitionDurationSec,
                 width,
                 height,
                 transitionMaxFrames,
