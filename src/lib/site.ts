@@ -8,7 +8,20 @@
 const FALLBACK_SITE_URL = "https://www.editsfieldai.online";
 const FALLBACK_CONTACT_EMAIL = "support@editsfieldai.online";
 
-export const SITE_URL = ((import.meta.env["VITE_SITE_URL"] as string | undefined) || FALLBACK_SITE_URL).replace(/\/+$/, "");
+function normalizeSiteUrl(value: string): string {
+  const normalized = value.trim().replace(/\/+$/, "");
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.hostname === "editsfieldai.online") parsed.hostname = "www.editsfieldai.online";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return FALLBACK_SITE_URL;
+  }
+}
+
+export const SITE_URL = normalizeSiteUrl(
+  (import.meta.env["VITE_SITE_URL"] as string | undefined) || FALLBACK_SITE_URL,
+);
 
 export const site = {
   name: "Editsfield AI",
