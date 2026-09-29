@@ -45,8 +45,9 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = fal
       // Snap from a slightly closer frame back to a comfortable framing.
       requestedScale = 1.16 - 0.13 * punchEased;
     } else if (isPan) {
-      // Fast camera move first, tiny settle afterwards.
-      requestedScale = 1.04 + 0.05 * punchEased - 0.01 * settleEased;
+      // Fast camera move first, with enough overscan to make the lateral move
+      // visibly energetic without ever exposing an edge.
+      requestedScale = 1.06 + 0.12 * punchEased - 0.02 * settleEased;
     } else {
       // Crash/punch zoom: fast 1.02 -> ~1.16, then a small settle.
       requestedScale = 1.02 + 0.14 * punchEased - 0.02 * settleEased;
@@ -59,6 +60,8 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = fal
     requestedX = kb.startX + (kb.endX - kb.startX) * eased;
     requestedY = kb.startY + (kb.endY - kb.startY) * eased;
   }
+
+  const scale = Math.max(1.02, Number.isFinite(requestedScale) ? requestedScale : 1.02);
 
   // For a centered image scaled to S, the safe translation range is
   // approximately +/- (S - 1) / 2. Clamp both axes independently so no edge
