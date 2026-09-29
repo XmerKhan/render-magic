@@ -14,7 +14,7 @@ export function BlogMarquee() {
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">Guides that solve real editing problems</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">Read practical guides for using the editor, fixing common problems and getting better results.</p>
         </div>
-        <Link to="/blog" className="inline-flex shrink-0 items-center justify-center gap-2 self-center rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-amber-500/50 hover:bg-zinc-900 sm:self-auto">View all guides <ArrowRight className="h-4 w-4" /></Link>
+        <Link to="/blog/" className="inline-flex shrink-0 items-center justify-center gap-2 self-center rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-amber-500/50 hover:bg-zinc-900 sm:self-auto">View all guides <ArrowRight className="h-4 w-4" /></Link>
       </div>
       <div className="relative mt-7 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/30 py-4">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-14 bg-gradient-to-r from-zinc-950 to-transparent" />
