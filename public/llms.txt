@@ -8,7 +8,7 @@
 - Inputs: images, video clips, voiceover audio, JSON or SRT timing script
 - Output: MP4 at 720p, 1080p or 4K
 - Aspect ratios: 16:9 (YouTube), 9:16 (Shorts, TikTok, Reels), 1:1, 4:5
-- Features: script-driven scene timing, Ken Burns motion, transition packs (Mixed, Smooth, Dynamic, Minimal), captions (fade, slide, typewriter, karaoke), lower thirds, callouts, date stamps, quote cards, background music with auto-ducking, loudness normalization, color grading presets
+- Features: script-driven scene timing, Ken Burns motion, transition packs (Mixed, Smooth, Dynamic, Minimal, Professional), captions (fade, slide, typewriter, karaoke), lower thirds, callouts, date stamps, quote cards, background music with auto-ducking, loudness normalization, color grading presets
 - Contact: support@editsfieldai.online
 
 ## Main pages
@@ -35,3 +35,14 @@
 - [What Is a Jump Cut?](https://www.editsfieldai.online/blog/what-is-a-jump-cut)
 - [What Is a Video Transition?](https://www.editsfieldai.online/blog/what-is-a-video-transition)
 - [What Is an Aspect Ratio?](https://www.editsfieldai.online/blog/what-is-an-aspect-ratio)
+
+## Troubleshooting guides
+- [How to Use Auto Sync: Match Your Script to a Word-Timestamp Transcript](https://www.editsfieldai.online/blog/how-to-use-auto-sync)
+- [Auto Sync Not Matching Your Script? Common Causes and Fixes](https://www.editsfieldai.online/blog/auto-sync-script-transcript-troubleshooting)
+- [Word Timestamp Transcript Format: What Your File Should Contain](https://www.editsfieldai.online/blog/word-timestamp-transcript-format)
+- [Scene Order Does Not Match Your Media? How to Fix It](https://www.editsfieldai.online/blog/scene-order-does-not-match-media)
+- [Why Your Video Timeline Duration Does Not Match the Voiceover](https://www.editsfieldai.online/blog/voiceover-and-timeline-duration-explained)
+- [Video Render Taking Too Long or Looks Stuck? What Is Happening](https://www.editsfieldai.online/blog/render-taking-too-long-or-seems-stuck)
+- [Video Has Black Bars or the Subject Looks Too Cropped? How to Fix Framing](https://www.editsfieldai.online/blog/video-has-black-bars-or-cropped-subject)
+- [Captions Are Out of Sync With the Voice? Easy Timing Fixes](https://www.editsfieldai.online/blog/captions-out-of-sync-with-voice)
+- [Why Auto Sync May Take Time on a Large Project](https://www.editsfieldai.online/blog/why-auto-sync-may-take-time)
