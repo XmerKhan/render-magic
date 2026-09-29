@@ -199,7 +199,7 @@ export function MostPopularBlogs() {
               </div>
             </div>
 
-            <Link to="/blog" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-white hover:text-zinc-950">
+            <Link to="/blog/" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-white hover:text-zinc-950">
               View all blogs <ArrowUpRight className="h-4 w-4" />
             </Link>
           </div>
