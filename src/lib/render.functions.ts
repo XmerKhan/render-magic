@@ -6,6 +6,24 @@ import { chunkFrameRange, chunkOutputPath, computeChunkCount } from "./renderTyp
 const ASSETS_BUCKET = "render-assets";
 const OUTPUT_BUCKET = "renders";
 
+async function ensureStorageBucket(
+  supabaseAdmin: typeof import("@/integrations/supabase/client.server").supabaseAdmin,
+  bucketId: string,
+): Promise<void> {
+  const { data: existing } = await supabaseAdmin.storage.getBucket(bucketId);
+  if (existing) return;
+
+  const { error: createError } = await supabaseAdmin.storage.createBucket(bucketId, {
+    public: false,
+  });
+
+  if (createError && !/already exists|duplicate|409/i.test(createError.message)) {
+    throw new Error(
+      `Could not create Supabase Storage bucket "${bucketId}": ${createError.message}`,
+    );
+  }
+}
+
 /** Uploads are large; give the browser a generous window. */
 const UPLOAD_URL_TTL = 60 * 60;
 const DOWNLOAD_URL_TTL = 60 * 60 * 6;
@@ -60,6 +78,9 @@ export const createRenderJob = createServerFn({ method: "POST" })
     const jobId = crypto.randomUUID();
     const outputPath = `${jobId}/editsfield-ai-${jobId}.mp4`;
 
+    await ensureStorageBucket(supabaseAdmin, ASSETS_BUCKET);
+    await ensureStorageBucket(supabaseAdmin, OUTPUT_BUCKET);
+
     const assetPaths: Record<string, string> = {};
     const targets: RenderUploadTarget[] = [];
 
@@ -72,8 +93,14 @@ export const createRenderJob = createServerFn({ method: "POST" })
         .createSignedUploadUrl(path, { upsert: true });
 
       if (error || !signed) {
-        console.error("[createRenderJob] signed upload url failed", error);
-        throw new Error(`Could not prepare upload for ${upload.filename}`);
+        console.error("[createRenderJob] signed upload url failed", {
+          filename: upload.filename,
+          path,
+          error,
+        });
+        throw new Error(
+          `Could not prepare upload for ${upload.filename}: ${error?.message ?? "Supabase did not return a signed upload URL"}`,
+        );
       }
 
       targets.push({
