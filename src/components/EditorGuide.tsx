@@ -98,7 +98,7 @@ Scene 4.mp4`}</code></pre>
 
           <div className="grid grid-cols-1 gap-3 border-t border-zinc-800 bg-zinc-900 px-5 py-6 sm:grid-cols-3 sm:px-8 lg:px-12">
             <Link to="/contact" className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-5 py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-amber-400">Contact Us</Link>
-            <Link to="/blog" className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-5 py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-amber-400">Blogs</Link>
+            <Link to="/blog/" className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-5 py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-amber-400">Blogs</Link>
             <Link to="/" className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-5 py-3.5 text-sm font-bold text-zinc-950 transition hover:bg-amber-400">Back to Homepage</Link>
           </div>
         </article>
