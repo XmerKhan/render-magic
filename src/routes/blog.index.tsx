@@ -9,8 +9,8 @@ const allPosts = [...posts, ...supportPosts];
 
 export const Route = createFileRoute("/blog/")({
   head: () => ({
-    ...pageSeo({ title: `Video Editing Guides & Tutorials — ${site.name}`, description: "Practical video editing guides covering online editing, captions, transitions, audio, Auto Sync, troubleshooting, YouTube and social video workflows.", path: "/blog" }),
-    scripts: [jsonLd({ "@context": "https://schema.org", "@type": "Blog", name: `${site.name} Blog`, url: `${site.url}/blog`, publisher: { "@type": "Organization", name: site.name } })],
+    ...pageSeo({ title: `Video Editing Guides & Tutorials — ${site.name}`, description: "Practical video editing guides covering online editing, captions, transitions, audio, Auto Sync, troubleshooting, YouTube and social video workflows.", path: "/blog/" }),
+    scripts: [jsonLd({ "@context": "https://schema.org", "@type": "Blog", name: `${site.name} Blog`, url: `${site.url}/blog/`, publisher: { "@type": "Organization", name: site.name } })],
   }),
   component: BlogIndex,
 });
