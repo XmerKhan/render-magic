@@ -15,17 +15,50 @@ const easeInOutCubic = (t: number) =>
  * that the current scale can safely support. A tiny minimum scale also makes
  * sub-pixel rounding safe at the edges.
  */
-function getSafeTransform(kb: KenBurnsConfig, progress: number) {
+function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = false) {
   if (kb.direction === 'static') {
     return { scale: 1, x: 0, y: 0 };
   }
 
-  const eased = easeInOutCubic(Math.max(0, Math.min(1, progress)));
-  const requestedScale = kb.startScale + (kb.endScale - kb.startScale) * eased;
-  const scale = Math.max(1.02, Number.isFinite(requestedScale) ? requestedScale : 1.02);
+  const p = Math.max(0, Math.min(1, progress));
+  const eased = easeInOutCubic(p);
 
-  const requestedX = kb.startX + (kb.endX - kb.startX) * eased;
-  const requestedY = kb.startY + (kb.endY - kb.startY) * eased;
+  // Professional mode is intentionally punchy: the camera makes the main
+  // move in roughly the first 12-16% of the scene, then settles. This avoids
+  // the slow 3-4 second Ken Burns drift that reads like a slideshow.
+  const punchProgress = Math.min(1, p / 0.14);
+  const punchEased = 1 - Math.pow(1 - punchProgress, 3);
+  const settleProgress = Math.max(0, Math.min(1, (p - 0.14) / 0.86));
+  const settleEased = 1 - Math.pow(1 - settleProgress, 3);
+
+  let requestedScale: number;
+  let requestedX: number;
+  let requestedY: number;
+
+  if (fastMotion) {
+    const panTargetX = kb.endX;
+    const panTargetY = kb.endY;
+    const isZoomOut = kb.direction.startsWith('zoom-out');
+    const isPan = kb.direction.includes('pan-') || kb.direction === 'pan-left' || kb.direction === 'pan-right';
+
+    if (isZoomOut) {
+      // Snap from a slightly closer frame back to a comfortable framing.
+      requestedScale = 1.16 - 0.13 * punchEased;
+    } else if (isPan) {
+      // Fast camera move first, tiny settle afterwards.
+      requestedScale = 1.04 + 0.05 * punchEased - 0.01 * settleEased;
+    } else {
+      // Crash/punch zoom: fast 1.02 -> ~1.16, then a small settle.
+      requestedScale = 1.02 + 0.14 * punchEased - 0.02 * settleEased;
+    }
+
+    requestedX = kb.startX + (panTargetX - kb.startX) * punchEased;
+    requestedY = kb.startY + (panTargetY - kb.startY) * punchEased;
+  } else {
+    requestedScale = kb.startScale + (kb.endScale - kb.startScale) * eased;
+    requestedX = kb.startX + (kb.endX - kb.startX) * eased;
+    requestedY = kb.startY + (kb.endY - kb.startY) * eased;
+  }
 
   // For a centered image scaled to S, the safe translation range is
   // approximately +/- (S - 1) / 2. Clamp both axes independently so no edge
@@ -37,12 +70,12 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number) {
   return { scale, x, y };
 }
 
-export const KenBurnsImage: React.FC<{ scene: TimelineScene }> = ({ scene }) => {
+export const KenBurnsImage: React.FC<{ scene: TimelineScene; fastMotion?: boolean }> = ({ scene, fastMotion = false }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
   const progress = durationInFrames > 1 ? frame / (durationInFrames - 1) : 0;
-  const { scale, x, y } = getSafeTransform(scene.kenBurns, progress);
+  const { scale, x, y } = getSafeTransform(scene.kenBurns, progress, fastMotion);
   const mediaUrl = scene.media.url.startsWith('worker-asset:')
     ? staticFile(scene.media.url.slice('worker-asset:'.length))
     : scene.media.url;
