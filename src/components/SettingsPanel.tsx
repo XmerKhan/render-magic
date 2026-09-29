@@ -13,7 +13,7 @@ const TRANSITION_PACKS: { value: EditSettings['transitionPack']; label: string; 
   { value: 'smooth', label: 'Smooth', desc: 'Crossfades and zooms, gentle flow' },
   { value: 'dynamic', label: 'Dynamic', desc: 'Whip pans and slides, high energy' },
   { value: 'minimal', label: 'Minimal', desc: 'Hard cuts and simple dissolves' },
-  { value: 'professional', label: 'Professional', desc: 'Camera moves, quick zooms and editorial cuts' },
+  { value: 'professional', label: 'Professional', desc: 'Snap zooms, whip moves and fast editorial cuts' },
 ];
 
 const CAPTION_STYLES: { value: EditSettings['captionStyle']; label: string }[] = [
@@ -95,7 +95,7 @@ export function SettingsPanel({ settings, onChange }: SettingsPanelProps) {
 
     <Section icon={<Sparkles className="w-4 h-4" />} title="Transitions">
       <div className="space-y-1.5">{TRANSITION_PACKS.map((pack) => <button key={pack.value} onClick={() => update({ transitionPack: pack.value })} className={`w-full text-left p-2.5 rounded-lg border transition-colors ${settings.transitionPack === pack.value ? 'border-amber-500 bg-amber-500/10' : 'border-zinc-700 hover:border-zinc-600'}`}><p className="text-xs font-medium text-zinc-200">{pack.label}</p><p className="text-[10px] text-zinc-500">{pack.desc}</p></button>)}</div>
-      <Slider label="Duration" value={settings.transitionDuration} min={0.2} max={2} step={0.1} onChange={(v) => update({ transitionDuration: v })} format={(v) => `${v.toFixed(1)}s`} />
+      <Slider label={settings.transitionPack === 'professional' ? 'Duration (auto-fast)' : 'Duration'} value={settings.transitionDuration} min={0.2} max={2} step={0.1} onChange={(v) => update({ transitionDuration: v })} format={(v) => settings.transitionPack === 'professional' ? '≤ 0.28s' : `${v.toFixed(1)}s`} />
     </Section>
 
     <Section icon={<Type className="w-4 h-4" />} title="Captions">
