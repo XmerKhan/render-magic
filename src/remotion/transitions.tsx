@@ -35,15 +35,53 @@ const flashWhite = (): TransitionPresentation<Record<string, never>> => ({
  * frame. Keep the same general motion language with scale + opacity, which is
  * compositor-friendly and substantially cheaper.
  */
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+/**
+ * Professional transitions are deliberately short: the goal is a snap, not
+ * a slow dissolve. The zoom peaks hard and settles inside a few frames.
+ */
 const fastZoom = (): TransitionPresentation<Record<string, never>> => ({
   component: ({ children, presentationProgress, presentationDirection }) => {
     const entering = presentationDirection === "entering";
-    const opacity = entering ? presentationProgress : 1 - presentationProgress;
+    const p = Math.max(0, Math.min(1, presentationProgress));
+    const eased = easeOutCubic(p);
     const scale = entering
-      ? 1.08 - presentationProgress * 0.08
-      : 1 + presentationProgress * 0.08;
+      ? 1.22 - eased * 0.22
+      : 1 + eased * 0.22;
+    const opacity = entering
+      ? 0.92 + eased * 0.08
+      : 1 - eased * 0.08;
+
     return (
       <AbsoluteFill style={{ opacity, transform: `scale(${scale})` }}>
+        {children}
+      </AbsoluteFill>
+    );
+  },
+  props: {},
+});
+
+const fastWhipPan = (): TransitionPresentation<Record<string, never>> => ({
+  component: ({ children, presentationProgress, presentationDirection }) => {
+    const entering = presentationDirection === "entering";
+    const p = Math.max(0, Math.min(1, presentationProgress));
+    const eased = easeOutCubic(p);
+    const x = entering
+      ? 105 - eased * 105
+      : eased * -105;
+    const scale = 1.03 + Math.sin(p * Math.PI) * 0.035;
+    const skew = entering ? -3 + eased * 3 : -eased * 3;
+    const opacity = 0.98;
+
+    return (
+      <AbsoluteFill
+        style={{
+          opacity,
+          transform: `translateX(${x}%) scale(${scale}) skewX(${skew}deg)`,
+          transformOrigin: "center center",
+        }}
+      >
         {children}
       </AbsoluteFill>
     );
@@ -79,9 +117,9 @@ export function getTransition(
       return { presentation: slide({ direction: "from-bottom" }), timing };
     case "whip-pan":
       return {
-        presentation: slide({ direction: "from-right" }),
+        presentation: fastWhipPan(),
         timing: linearTiming({
-          durationInFrames: Math.max(1, Math.round(durationInFrames * 0.5)),
+          durationInFrames: Math.max(1, Math.round(durationInFrames * 0.7)),
         }),
       };
     case "zoom-blur":
