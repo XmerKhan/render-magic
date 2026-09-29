@@ -51,7 +51,7 @@ export const SceneComponent: React.FC<{ scene: TimelineScene; settings: EditSett
   const env = useRemotionEnvironment();
 
   const media = scene.media.kind === "image" ? (
-    scene.kenBurns.enabled ? <KenBurnsImage scene={scene} /> : <Img src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    scene.kenBurns.enabled ? <KenBurnsImage scene={scene} fastMotion={settings.transitionPack === "professional"} /> : <Img src={mediaUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
   ) : env.isRendering ? (
     <Video src={mediaUrl} style={{ width: "100%", height: "100%" }} objectFit="cover" muted />
   ) : (
