@@ -11,7 +11,6 @@ const OUTPUT_BUCKET = "renders";
 
 /** A cold GitHub runner plus a long render needs long-lived asset URLs. */
 const ASSET_URL_TTL = 60 * 60 * 6;
-const OUTPUT_UPLOAD_TTL = 60 * 60 * 6;
 
 const chunkRefSchema = z.object({
   jobId: z.string().uuid(),
