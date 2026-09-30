@@ -13,6 +13,7 @@ import { buildTimeline } from '@/lib/timelineBuilder';
 import { validateScript, parseScriptFile } from '@/lib/validator';
 import { getAudioDuration, generateWaveform } from '@/lib/mediaUtils';
 import { exportVideo } from '@/lib/videoExporter';
+import { cleanupRenderOutput } from '@/lib/render.functions';
 import { alignScriptToTranscript, parseOriginalScript, parseSceneOrder, parseTimestampedTranscript } from '@/lib/voiceSync';
 import type { WaveformPeak } from '@/lib/mediaUtils';
 
@@ -66,6 +67,7 @@ export default function App() {
   const [showRender, setShowRender] = useState(false);
   const [progress, setProgress] = useState<PipelineProgress>({ stage: 'idle', message: '', progress: 0 });
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [renderRef, setRenderRef] = useState<{ jobId: string; token: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const mediaMap = new Map(assets.map((a) => [a.id, a]));
@@ -147,11 +149,11 @@ export default function App() {
 
   const handleGenerate = async () => {
     if (!timeline || !canGenerate) return;
-    setShowRender(true); setDownloadUrl(null); setProgress({ stage: 'rendering', message: 'Uploading media to server...', progress: 2 });
+    setShowRender(true); setDownloadUrl(null); setRenderRef(null); setProgress({ stage: 'rendering', message: 'Uploading media to server...', progress: 2 });
     const controller = new AbortController(); abortRef.current = controller;
     try {
       const url = await exportVideo({ timeline, settings, assets, voiceoverFile, musicFile, signal: controller.signal, onProgress: (pct, msg, details) => setProgress((prev) => ({ stage: 'rendering', message: msg, progress: pct < 0 ? prev.progress : pct, ...details })) });
-      setDownloadUrl(url); setProgress({ stage: 'done', message: 'Video rendered successfully', progress: 100 });
+      setDownloadUrl(url.downloadUrl); setRenderRef({ jobId: url.jobId, token: url.token }); setProgress({ stage: 'done', message: 'Video rendered successfully', progress: 100 });
     } catch (e) { setProgress({ stage: 'error', message: (e as Error).message || 'Unknown rendering error', progress: 0 }); }
   };
   const handleCancel = () => { abortRef.current?.abort(); setShowRender(false); setProgress({ stage: 'idle', message: '', progress: 0 }); };
@@ -168,6 +170,20 @@ export default function App() {
       <div className="w-full lg:w-72 lg:shrink-0 h-[48vh] lg:h-full"><SettingsPanel settings={settings} onChange={setSettings} /></div>
     </div>
     <EditorGuide />
-    <RenderDialog open={showRender} progress={progress} downloadUrl={downloadUrl} fileName={fileName} onClose={() => setShowRender(false)} onCancel={handleCancel} />
+    <RenderDialog
+      open={showRender}
+      progress={progress}
+      downloadUrl={downloadUrl}
+      fileName={fileName}
+      onClose={() => setShowRender(false)}
+      onCancel={handleCancel}
+      onDownloadStarted={() => {
+        const ref = renderRef;
+        if (!ref) return;
+        window.setTimeout(() => {
+          void cleanupRenderOutput({ data: ref }).catch(() => {});
+        }, 30 * 60 * 1000);
+      }}
+    />
   </div>;
 }
