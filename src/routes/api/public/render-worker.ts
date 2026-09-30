@@ -52,6 +52,10 @@ const bodySchema = z.discriminatedUnion("action", [
     action: z.literal("complete"),
     jobId: z.string().uuid(),
     jobToken: z.string().uuid(),
+    outputUrl: z.string().url().refine(
+      (value) => new URL(value).hostname.endsWith(".blob.vercel-storage.com"),
+      "Invalid Vercel Blob output URL",
+    ),
   }),
   z.object({
     action: z.literal("fail"),
@@ -380,14 +384,6 @@ export const Route = createFileRoute("/api/public/render-worker")({
             chunkUrls.push(signed.signedUrl);
           }
 
-          const { data: outputUpload, error: uploadError } = await supabaseAdmin.storage
-            .from(OUTPUT_BUCKET)
-            .createSignedUploadUrl(payload.outputPath, { upsert: true });
-          if (uploadError || !outputUpload) {
-            console.error("[render-worker] output upload url failed", uploadError);
-            return json({ error: "Could not create the output upload URL" }, 500);
-          }
-
           await supabaseAdmin
             .from("render_jobs")
             .update({ status: "stitching", progress: 95, message: "Combining chunks" })
@@ -395,41 +391,20 @@ export const Route = createFileRoute("/api/public/render-worker")({
 
           return json({
             chunkUrls,
-            outputUploadUrl: outputUpload.signedUrl,
-            uploadUrlTtlSeconds: OUTPUT_UPLOAD_TTL,
+            outputPath: `renders/${job.id}/editsfield-ai-${job.id}.mp4`,
             totalFrames: job.total_frames,
             fps: payload.fps,
           });
         }
 
         if (parsed.action === "complete") {
-          const slash = payload.outputPath.lastIndexOf("/");
-          const folder = slash === -1 ? "" : payload.outputPath.slice(0, slash);
-          const name = payload.outputPath.slice(slash + 1);
-          const { data: listed } = await supabaseAdmin.storage
-            .from(OUTPUT_BUCKET)
-            .list(folder, { search: name });
-          const uploaded = listed?.find((f) => f.name === name);
-
-          if (!uploaded) {
-            await supabaseAdmin
-              .from("render_jobs")
-              .update({
-                status: "failed",
-                error: "The render finished but the video file was not uploaded.",
-                message: "Upload missing",
-              })
-              .eq("id", job.id);
-            return json({ error: "Output file not found in storage" }, 400);
-          }
-
           await supabaseAdmin
             .from("render_jobs")
             .update({
               status: "done",
               progress: 100,
               message: "Render complete",
-              output_path: payload.outputPath,
+              output_path: parsed.outputUrl,
               rendered_frames: job.total_frames,
               error: null,
             })
@@ -439,6 +414,17 @@ export const Route = createFileRoute("/api/public/render-worker")({
             chunkOutputPath(job.id, i),
           );
           await supabaseAdmin.storage.from(OUTPUT_BUCKET).remove(chunkPaths);
+
+          // Raw user media is only needed during rendering. Delete it as soon
+          // as the final video has been uploaded to the temporary download store.
+          const { data: assetFiles } = await supabaseAdmin.storage
+            .from(ASSETS_BUCKET)
+            .list(job.id, { limit: 1000 });
+          if (assetFiles?.length) {
+            await supabaseAdmin.storage.from(ASSETS_BUCKET).remove(
+              assetFiles.map((file) => `${job.id}/${file.name}`),
+            );
+          }
 
           return json({ ok: true });
         }
