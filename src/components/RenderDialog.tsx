@@ -9,6 +9,7 @@ interface RenderDialogProps {
   fileName: string;
   onClose: () => void;
   onCancel: () => void;
+  onDownloadStarted?: () => void;
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -37,6 +38,7 @@ export function RenderDialog({
   fileName,
   onClose,
   onCancel,
+  onDownloadStarted,
 }: RenderDialogProps) {
   const [downloadStarted, setDownloadStarted] = useState(false);
 
@@ -52,6 +54,7 @@ export function RenderDialog({
     a.download = fileName;
     a.click();
     setDownloadStarted(true);
+    onDownloadStarted?.();
   };
 
   return (
