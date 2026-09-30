@@ -2,7 +2,6 @@ import type { EditSettings, MediaAsset, TimelineData } from "@/types";
 import { getAuthoritativeTimelineFrames, getCompositionConfig } from "@/remotion/config";
 import { assetPlaceholder, type RenderUploadRequest } from "@/lib/renderTypes";
 import { createRenderJob, dispatchRenderJob, getRenderJob } from "@/lib/render.functions";
-import { supabase } from "@/integrations/supabase/client";
 
 const ASSETS_BUCKET = "render-assets";
 const POLL_INTERVAL_MS = 2000;
@@ -218,13 +217,39 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
       `Uploading ${file.name} (${i + 1}/${total})...`,
     );
 
-    const { error } = await supabase.storage
-      .from(ASSETS_BUCKET)
-      .uploadToSignedUrl(target.path, target.token, file, {
-        contentType: file.type || "application/octet-stream",
+    try {
+      // Use the exact signed URL created by the server instead of rebuilding
+      // the upload endpoint from the browser's VITE_SUPABASE_URL. This keeps
+      // the upload bound to the same Supabase project that signed the token
+      // and avoids "signature verification failed" when the client-side
+      // Supabase environment is stale or points at another project.
+      const form = new FormData();
+      form.append("cacheControl", "3600");
+      form.append("", file);
+
+      const response = await fetch(target.signedUrl, {
+        method: "PUT",
+        headers: {
+          "x-upsert": "true",
+        },
+        body: form,
+        signal,
       });
 
-    if (error) throw new Error(`Upload failed for ${file.name}: ${error.message}`);
+      if (!response.ok) {
+        let detail = "";
+        try {
+          const body = await response.text();
+          detail = body ? `: ${body.slice(0, 300)}` : "";
+        } catch {
+          // Keep the HTTP status as the useful fallback.
+        }
+        throw new Error(`Supabase Storage returned HTTP ${response.status}${detail}`);
+      }
+    } catch (error) {
+      if (error instanceof CancelledError) throw error;
+      throw new Error(`Upload failed for ${file.name}: ${error instanceof Error ? error.message : "unknown upload error"}`);
+    }
   }
 
   throwIfAborted(signal);
