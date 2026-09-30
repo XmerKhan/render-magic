@@ -5,6 +5,10 @@ import { chunkFrameRange, chunkOutputPath, computeChunkCount } from "./renderTyp
 
 const ASSETS_BUCKET = "render-assets";
 const OUTPUT_BUCKET = "renders";
+const DEFAULT_RENDER_REPO = "XmerKhan/render-magic";
+const DEFAULT_RENDER_WORKFLOW = "render.yml";
+const DEFAULT_RENDER_REF = "main";
+const DEFAULT_CALLBACK_URL = "https://www.editsfieldai.online";
 
 async function ensureStorageBucket(
   supabaseAdmin: typeof import("@/integrations/supabase/client.server").supabaseAdmin,
@@ -32,26 +36,16 @@ const uploadRequestSchema = z.object({
   key: z.string().min(1).max(120),
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1).max(120),
-  sizeBytes: z
-    .number()
-    .int()
-    .nonnegative()
-    .max(500 * 1024 * 1024),
+  sizeBytes: z.number().int().nonnegative().max(500 * 1024 * 1024),
 });
 
 const createSchema = z.object({
-  // The timeline/settings shapes are large and app-owned; validate structurally
-  // and let the render worker fail loudly on anything genuinely malformed.
   timeline: z.record(z.string(), z.unknown()),
   settings: z.record(z.string(), z.unknown()),
   width: z.number().int().min(16).max(4096),
   height: z.number().int().min(16).max(4096),
   fps: z.number().int().min(1).max(120),
-  durationInFrames: z
-    .number()
-    .int()
-    .min(1)
-    .max(60 * 60 * 30),
+  durationInFrames: z.number().int().min(1).max(60 * 60 * 30),
   uploads: z.array(uploadRequestSchema).max(500),
 });
 
@@ -65,11 +59,6 @@ function sanitizeFilename(name: string): string {
   return cleaned.length > 0 ? cleaned : "file";
 }
 
-/**
- * Creates a render job row and hands the browser one signed upload URL per media
- * file. Nothing is dispatched until `dispatchRenderJob` is called, so an aborted
- * upload just leaves an orphaned `queued` row.
- */
 export const createRenderJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => createSchema.parse(input))
   .handler(async ({ data }) => {
@@ -149,15 +138,6 @@ export const createRenderJob = createServerFn({ method: "POST" })
     };
   });
 
-/**
- * Triggers the GitHub Actions render workflow for an already-uploaded job.
- *
- * The workflow runner is the render farm: a free-tier runner gets 2 vCPUs and
- * ~7GB RAM, which is enough for Remotion but too slow to render a long video
- * serially in one job. So the timeline is split into `chunkCount` frame
- * ranges and rendered as parallel matrix jobs, then stitched together — see
- * computeChunkCount() and .github/workflows/render.yml.
- */
 export const dispatchRenderJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => jobRefSchema.parse(input))
   .handler(async ({ data }) => {
@@ -177,7 +157,6 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
       throw new Error("Render job not found");
     }
     if (job.status !== "queued") {
-      // Idempotent: a retried dispatch must not start a second render.
       return { dispatched: false, status: job.status };
     }
 
@@ -196,28 +175,28 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
         output_path: chunkOutputPath(job.id, chunkIndex),
       };
     });
+
     const { error: chunkError } = await supabaseAdmin
       .from("render_job_chunks")
       .upsert(chunks, { onConflict: "job_id,chunk_index", ignoreDuplicates: true });
+
     if (chunkError) {
       console.error("[dispatchRenderJob] chunk checkpoint creation failed", chunkError);
-      throw new Error("Could not prepare resumable render chunks");
+      throw new Error(`Could not prepare resumable render chunks: ${chunkError.message}`);
     }
 
     const token = process.env["GITHUB_RENDER_TOKEN"];
-    const repo = process.env["GITHUB_RENDER_REPO"];
-    const workflow = process.env["GITHUB_RENDER_WORKFLOW"] ?? "render.yml";
-    const ref = process.env["GITHUB_RENDER_REF"] ?? "main";
-    const appUrl = process.env["RENDER_CALLBACK_URL"] ?? process.env["APP_URL"];
+    const repo = process.env["GITHUB_RENDER_REPO"] ?? DEFAULT_RENDER_REPO;
+    const workflow = process.env["GITHUB_RENDER_WORKFLOW"] ?? DEFAULT_RENDER_WORKFLOW;
+    const ref = process.env["GITHUB_RENDER_REF"] ?? DEFAULT_RENDER_REF;
+    const appUrl =
+      process.env["RENDER_CALLBACK_URL"] ??
+      process.env["APP_URL"] ??
+      DEFAULT_CALLBACK_URL;
 
-    if (!token || !repo) {
+    if (!token) {
       throw new Error(
-        "The render farm is not configured yet. Add GITHUB_RENDER_TOKEN and GITHUB_RENDER_REPO, then try again.",
-      );
-    }
-    if (!appUrl) {
-      throw new Error(
-        "The render farm has no callback URL. Add RENDER_CALLBACK_URL (your published app URL), then try again.",
+        "The render farm token is missing. Add GITHUB_RENDER_TOKEN to the Vercel Production environment, then redeploy.",
       );
     }
 
@@ -230,10 +209,8 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
           "X-GitHub-Api-Version": "2022-11-28",
-          // GitHub rejects API requests without a User-Agent with a 403.
           "User-Agent": "EditsfieldAI-Render-Dispatcher",
         },
-
         body: JSON.stringify({
           ref,
           inputs: {
@@ -251,9 +228,9 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
       console.error(`[dispatchRenderJob] github dispatch failed [${res.status}]: ${body}`);
       const hint =
         res.status === 404
-          ? ` The repo "${repo}", the branch "${ref}", or the workflow "${workflow}" could not be found with the configured token. Make sure this project's code (including .github/workflows/${workflow}) is pushed to that repo on branch "${ref}", and that the token has Actions: Read and write on it.`
+          ? ` The repository "${repo}", branch "${ref}", or workflow "${workflow}" was not found with the configured token. Check that the token has Actions: Read and write access to this repository.`
           : res.status === 403
-            ? " GitHub refused the request — check that the token is valid and has Actions: Read and write on the repo."
+            ? " GitHub refused the request. Check that GITHUB_RENDER_TOKEN is valid and has Actions: Read and write access to the repository."
             : "";
       const detail = `Could not start the render worker (GitHub returned ${res.status}).${hint}`;
       await supabaseAdmin
@@ -285,7 +262,6 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
     return { dispatched: true, status: "dispatched" as const };
   });
 
-/** Polled by the browser. Returns a signed download URL once the render is done. */
 export const getRenderJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => jobRefSchema.parse(input))
   .handler(async ({ data }): Promise<RenderJobState> => {
