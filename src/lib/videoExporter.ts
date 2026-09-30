@@ -3,7 +3,6 @@ import { getAuthoritativeTimelineFrames, getCompositionConfig } from "@/remotion
 import { assetPlaceholder, type RenderUploadRequest } from "@/lib/renderTypes";
 import { createRenderJob, dispatchRenderJob, getRenderJob } from "@/lib/render.functions";
 
-const ASSETS_BUCKET = "render-assets";
 const POLL_INTERVAL_MS = 2000;
 const POLL_BACKOFF_MAX_MS = 15000;
 const MAX_CONSECUTIVE_POLL_FAILURES = 8;
