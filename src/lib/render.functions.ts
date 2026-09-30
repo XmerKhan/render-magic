@@ -136,7 +136,9 @@ export const createRenderJob = createServerFn({ method: "POST" })
 
     if (insertError || !job) {
       console.error("[createRenderJob] insert failed", insertError);
-      throw new Error("Could not create the render job");
+      throw new Error(
+        `Could not create the render job: ${insertError?.message ?? "Supabase did not return the created job"}`,
+      );
     }
 
     return {
