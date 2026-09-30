@@ -176,7 +176,7 @@ function toJsonSafe<T>(value: T, label: string): Record<string, unknown> {
   }
 }
 
-export async function exportVideo(opts: ExportOptions): Promise<string> {
+export async function exportVideo(opts: ExportOptions): Promise<{ downloadUrl: string; jobId: string; token: string }> {
   const { assets, voiceoverFile, musicFile, onProgress, signal } = opts;
 
   throwIfAborted(signal);
@@ -293,7 +293,7 @@ export async function exportVideo(opts: ExportOptions): Promise<string> {
     if (state.status === "done") {
       if (!state.downloadUrl) throw new Error("The render finished but no download link was returned");
       onProgress(100, "Render complete");
-      return state.downloadUrl;
+      return { downloadUrl: state.downloadUrl, jobId: job.jobId, token: job.token };
     }
 
     const chunkDetail = state.totalChunks > 1
