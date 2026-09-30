@@ -285,16 +285,9 @@ export const getRenderJob = createServerFn({ method: "POST" })
 
     let downloadUrl: string | null = null;
     if ((job.status === "done" || job.status === "completed") && job.output_path) {
-      const { data: signed, error: signError } = await supabaseAdmin.storage
-        .from(OUTPUT_BUCKET)
-        .createSignedUrl(job.output_path, DOWNLOAD_URL_TTL, {
-          download: `editsfield-ai-${job.id}.mp4`,
-        });
-      if (signError || !signed) {
-        console.error("[getRenderJob] signing download failed", signError);
-        throw new Error("The video finished rendering but the download link could not be created");
-      }
-      downloadUrl = signed.signedUrl;
+      downloadUrl = job.output_path.includes("?")
+        ? job.output_path
+        : `${job.output_path}?download=1`;
     }
 
     return {
