@@ -118,4 +118,5 @@ jobs:
           JOB_TOKEN: ${{ inputs.job_token }}
           APP_URL: ${{ inputs.app_url }}
           CHUNK_COUNT: ${{ inputs.chunk_count }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
         run: node stitch.mjs
