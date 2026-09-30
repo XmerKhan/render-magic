@@ -30,7 +30,6 @@ async function ensureStorageBucket(
 
 /** Uploads are large; give the browser a generous window. */
 const UPLOAD_URL_TTL = 60 * 60;
-const DOWNLOAD_URL_TTL = 60 * 60 * 6;
 
 const uploadRequestSchema = z.object({
   key: z.string().min(1).max(120),
@@ -136,6 +135,53 @@ export const createRenderJob = createServerFn({ method: "POST" })
       uploads: targets,
       uploadUrlTtlSeconds: UPLOAD_URL_TTL,
     };
+  });
+
+export const cleanupRenderOutput = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => jobRefSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: job, error } = await supabaseAdmin
+      .from("render_jobs")
+      .select("id, access_token, output_path")
+      .eq("id", data.jobId)
+      .maybeSingle();
+
+    if (error || !job || job.access_token !== data.token) {
+      throw new Error("Render job not found");
+    }
+
+    if (!job.output_path || !job.output_path.includes(".blob.vercel-storage.com/")) {
+      return { cleaned: false };
+    }
+
+    const blobToken = process.env["BLOB_READ_WRITE_TOKEN"];
+    if (!blobToken) {
+      throw new Error("Vercel Blob is not configured for cleanup");
+    }
+
+    const response = await fetch("https://vercel.com/api/blob/delete", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${blobToken}`,
+        "Content-Type": "application/json",
+        "x-api-version": "12",
+      },
+      body: JSON.stringify({ urls: [job.output_path] }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Could not delete temporary video [${response.status}]: ${body.slice(0, 300)}`);
+    }
+
+    await supabaseAdmin
+      .from("render_jobs")
+      .update({ output_path: null })
+      .eq("id", job.id);
+
+    return { cleaned: true };
   });
 
 export const dispatchRenderJob = createServerFn({ method: "POST" })
