@@ -316,7 +316,7 @@ async function main() {
 main().catch(async (error) => {
   console.error(error?.stack || error);
   try {
-    await callApp({ action: "fail-chunk", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT, attempt: currentAttempt, error: error?.message || String(error) }, { retries: 1 });
+    await callApp({ action: "chunk-fail", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT, final: currentAttempt >= MAX_ATTEMPTS, error: error?.message || String(error) }, { retries: 1 });
   } catch (reportError) {
     console.error(`Failed to report chunk error: ${reportError.message}`);
   }
