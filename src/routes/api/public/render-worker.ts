@@ -83,7 +83,13 @@ export const Route = createFileRoute("/api/public/render-worker")({
           return json({ error: "Invalid request body" }, 400);
         }
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        let supabaseAdmin;
+        try {
+          ({ supabaseAdmin } = await import("@/integrations/supabase/client.server"));
+        } catch (err) {
+          console.error("[render-worker] Supabase initialization failed", err);
+          return json({ error: "Render backend Supabase initialization failed", detail: err instanceof Error ? err.message : String(err) }, 500);
+        }
 
         const { data: job, error } = await supabaseAdmin
           .from("render_jobs")
