@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Film, Wand2 } from 'lucide-react';
+import { Film, Wand2, Download, Loader2, X } from 'lucide-react';
 import type { MediaAsset, EditSettings, TimelineData, ScriptSegment, ValidationResult, PipelineProgress } from '@/types';
 import { MediaBin } from '@/components/MediaBin';
 import { PreviewPlayer } from '@/components/PreviewPlayer';
@@ -14,6 +14,7 @@ import { validateScript, parseScriptFile } from '@/lib/validator';
 import { getAudioDuration, generateWaveform } from '@/lib/mediaUtils';
 import { exportVideo } from '@/lib/videoExporter';
 import { cleanupRenderOutput } from '@/lib/render.functions';
+import { quickDownloadVideo, saveQuickDownload } from '@/lib/quickDownload';
 import { alignScriptToTranscript, parseOriginalScript, parseSceneOrder, parseTimestampedTranscript } from '@/lib/voiceSync';
 import type { WaveformPeak } from '@/lib/mediaUtils';
 
@@ -68,6 +69,8 @@ export default function App() {
   const [progress, setProgress] = useState<PipelineProgress>({ stage: 'idle', message: '', progress: 0 });
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [renderRef, setRenderRef] = useState<{ jobId: string; token: string } | null>(null);
+  const [quickDownload, setQuickDownload] = useState({ active: false, progress: 0, error: '' });
+  const quickAbortRef = useRef<AbortController | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const playerRef = useRef<PlayerRef>(null);
   const mediaMap = new Map(assets.map((a) => [a.id, a]));
@@ -156,13 +159,41 @@ export default function App() {
       setDownloadUrl(url.downloadUrl); setRenderRef({ jobId: url.jobId, token: url.token }); setProgress({ stage: 'done', message: 'Video rendered successfully', progress: 100 });
     } catch (e) { setProgress({ stage: 'error', message: (e as Error).message || 'Unknown rendering error', progress: 0 }); }
   };
+  const handleQuickDownload = async () => {
+    if (!timeline || !canGenerate || quickDownload.active) return;
+    const controller = new AbortController();
+    quickAbortRef.current = controller;
+    setQuickDownload({ active: true, progress: 0, error: '' });
+    try {
+      const blob = await quickDownloadVideo({
+        timeline,
+        settings,
+        signal: controller.signal,
+        onProgress: (value) => setQuickDownload((prev) => ({ ...prev, progress: Math.round(value * 100) })),
+      });
+      await saveQuickDownload(blob, `editsfield-quick-${Date.now()}.mp4`);
+      setQuickDownload({ active: false, progress: 100, error: '' });
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setQuickDownload({ active: false, progress: 0, error: (error as Error).message || 'Quick Download failed.' });
+      }
+    } finally {
+      quickAbortRef.current = null;
+    }
+  };
+
+  const handleCancelQuickDownload = () => {
+    quickAbortRef.current?.abort();
+    setQuickDownload({ active: false, progress: 0, error: '' });
+  };
+
   const handleCancel = () => { abortRef.current?.abort(); setShowRender(false); setProgress({ stage: 'idle', message: '', progress: 0 }); };
   const fileName = `autoedit-${Date.now()}.mp4`;
 
   return <div className="editsfield-editor min-h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-x-hidden">
     <header className="min-h-14 flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur shrink-0">
       <div className="flex items-center gap-2.5 min-w-0"><div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center"><Film className="w-4 h-4 text-zinc-900" /></div><div className="min-w-0"><h1 className="text-sm font-bold tracking-tight truncate">Editsfield AI</h1><p className="text-[10px] text-zinc-500 -mt-0.5 truncate">Automatic Video Editor</p></div></div>
-      <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden sm:inline">Generate Video</span><span className="sm:hidden">Generate</span></button></div>
+      <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleQuickDownload} disabled={!canGenerate || quickDownload.active} title="Export the exact current preview composition directly in your browser" className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/70 text-amber-300 hover:bg-amber-500/10 font-semibold text-xs disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Download className="w-4 h-4" /><span className="hidden sm:inline">Quick Download</span><span className="sm:hidden">Quick</span></button><button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden sm:inline">High Quality Render & Download</span><span className="sm:hidden">HQ Render</span></button></div>
     </header>
     <div className="h-[calc(100vh-3.5rem)] min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
       <div className="w-full lg:w-72 lg:shrink-0 h-[42vh] lg:h-full"><MediaBin assets={assets} onAssetsChange={setAssets} voiceoverFile={voiceoverFile} onVoiceoverChange={handleVoiceoverChange} musicFile={musicFile} onMusicChange={handleMusicChange} scriptFile={scriptFile} onScriptChange={handleScriptChange} originalScriptFile={originalScriptFile} onOriginalScriptChange={handleOriginalScriptChange} transcriptFile={transcriptFile} onTranscriptChange={handleTranscriptChange} sceneOrderFile={sceneOrderFile} onSceneOrderChange={handleSceneOrderChange} /></div>
@@ -185,5 +216,35 @@ export default function App() {
         }, 30 * 60 * 1000);
       }}
     />
+    {quickDownload.active && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl p-6">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-100">Quick Download</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">Exporting the same edited preview directly in your browser</p>
+            </div>
+          </div>
+          <div className="mt-5 h-2 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all" style={{ width: `${quickDownload.progress}%` }} />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs">
+            <span className="text-zinc-500">MP4 • H.264 • AAC</span>
+            <span className="font-mono text-zinc-300">{quickDownload.progress}%</span>
+          </div>
+          <button onClick={handleCancelQuickDownload} className="w-full mt-5 py-2.5 rounded-lg border border-zinc-700 text-zinc-300 text-sm font-medium hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2">
+            <X className="w-4 h-4" /> Cancel
+          </button>
+        </div>
+      </div>
+    )}
+    {quickDownload.error && !quickDownload.active && (
+      <div className="fixed bottom-5 right-5 z-[70] max-w-md rounded-xl border border-red-500/30 bg-zinc-900 px-4 py-3 shadow-2xl">
+        <p className="text-xs font-medium text-red-400">Quick Download failed</p>
+        <p className="text-xs text-zinc-400 mt-1">{quickDownload.error}</p>
+        <button onClick={() => setQuickDownload((prev) => ({ ...prev, error: '' }))} className="mt-2 text-xs text-amber-400 hover:text-amber-300">Dismiss</button>
+      </div>
+    )}
   </div>;
 }
