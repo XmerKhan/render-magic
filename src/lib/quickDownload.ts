@@ -65,18 +65,18 @@ export async function saveQuickDownload(blob: Blob, fileName: string): Promise<v
           types: [{ description: "MP4 video", accept: { "video/mp4": [extension] } }],
         });
         const writable = await handle.createWritable();
-        const stream = writable as unknown as WritableStream;
+        const writer = writable as unknown as WritableStreamDefaultWriter<Uint8Array>;
         const reader = blob.stream().getReader();
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            await stream.getWriter().write(value);
+            await writer.write(value);
           }
         } finally {
           reader.releaseLock();
-          await stream.getWriter().close();
+          await writer.close();
         }
         return;
       }
