@@ -189,7 +189,6 @@ export const Route = createFileRoute("/api/public/render-worker")({
             durationInFrames: payload.durationInFrames,
             frameRange: [checkpoint.frame_from, checkpoint.frame_to],
             outputUploadUrl: outputUpload.signedUrl,
-            uploadUrlTtlSeconds: OUTPUT_UPLOAD_TTL,
             attempt,
             signedAssets: signedByKey,
           });
