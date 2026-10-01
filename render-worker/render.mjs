@@ -17,7 +17,9 @@ const CHUNK_COUNT = Number(process.env.CHUNK_COUNT);
 const MAX_ATTEMPTS = Math.max(1, Number(process.env.MAX_CHUNK_ATTEMPTS || 3));
 const run = promisify(execFile);
 
-if (!JOB_ID || !JOB_TOKEN || !APP_URL) throw new Error("JOB_ID, JOB_TOKEN and APP_URL are required");
+if (!JOB_ID || !JOB_TOKEN || !APP_URL) {
+  throw new Error("JOB_ID, JOB_TOKEN and APP_URL are required");
+}
 if (!Number.isInteger(CHUNK_INDEX) || !Number.isInteger(CHUNK_COUNT) || CHUNK_COUNT < 1) {
   throw new Error("CHUNK_INDEX and CHUNK_COUNT must be valid integers");
 }
