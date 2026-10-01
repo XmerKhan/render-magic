@@ -21,56 +21,128 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = fal
   }
 
   const p = Math.max(0, Math.min(1, progress));
-  const eased = easeInOutCubic(p);
-
-  // Professional mode is intentionally punchy: the camera makes the main
-  // move in roughly the first 12-16% of the scene, then settles. This avoids
-  // the slow 3-4 second Ken Burns drift that reads like a slideshow.
-  const punchProgress = Math.min(1, p / 0.14);
-  const punchEased = 1 - Math.pow(1 - punchProgress, 3);
-  const settleProgress = Math.max(0, Math.min(1, (p - 0.14) / 0.86));
-  const settleEased = 1 - Math.pow(1 - settleProgress, 3);
-
-  let requestedScale: number;
-  let requestedX: number;
-  let requestedY: number;
 
   if (fastMotion) {
-    const panTargetX = kb.endX;
-    const panTargetY = kb.endY;
-    const isZoomOut = kb.direction.startsWith('zoom-out');
-    const isPan = kb.direction.includes('pan-') || kb.direction === 'pan-left' || kb.direction === 'pan-right';
+    /*
+     * Professional documentary motion has two layers:
+     * 1) a very fast editorial punch right at the scene entrance;
+     * 2) continuous camera movement for the rest of the shot.
+     *
+     * The second layer is intentionally made from several slow keyframes
+     * instead of one long Ken-Burns interpolation. This prevents a 5-10s
+     * still image from looking frozen after the transition.
+     */
+    const easeOut = (t: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-    if (isZoomOut) {
-      // Snap from a slightly closer frame back to a comfortable framing.
-      requestedScale = 1.16 - 0.13 * punchEased;
-    } else if (isPan) {
-      // Fast camera move first, with enough overscan to make the lateral move
-      // visibly energetic without ever exposing an edge.
-      requestedScale = 1.06 + 0.12 * punchEased - 0.02 * settleEased;
+    const baseX = kb.startX;
+    const baseY = kb.startY;
+    const targetX = kb.endX;
+    const targetY = kb.endY;
+
+    let x: number;
+    let y: number;
+    let scale: number;
+
+    if (p < 0.12) {
+      // Fast entrance punch: immediate zoom/camera snap.
+      const t = easeOut(p / 0.12);
+      x = lerp(baseX, targetX, t);
+      y = lerp(baseY, targetY, t);
+      scale = lerp(Math.max(1.02, kb.startScale), Math.max(1.06, kb.endScale + 0.035), t);
     } else {
-      // Crash/punch zoom: fast 1.02 -> ~1.16, then a small settle.
-      requestedScale = 1.02 + 0.14 * punchEased - 0.02 * settleEased;
+      // Continuous mid-shot camera choreography.
+      const q = (p - 0.12) / 0.88;
+      const isZoomOut = kb.direction.startsWith('zoom-out');
+      const isPan = kb.direction.includes('pan-');
+
+      // Four editorial keyframes. Values are deliberately small; safeTransform
+      // below clamps them against the available overscan.
+      const k1 = { x: targetX, y: targetY, s: isZoomOut ? 1.045 : 1.12 };
+      const k2 = {
+        x: targetX * -0.72,
+        y: targetY * -0.55,
+        s: isZoomOut ? 1.085 : 1.065,
+      };
+      const k3 = {
+        x: targetX * 0.52,
+        y: targetY * 0.36,
+        s: isZoomOut ? 1.025 : 1.135,
+      };
+      const k4 = {
+        x: targetX * -0.25,
+        y: targetY * -0.18,
+        s: isZoomOut ? 1.055 : 1.105,
+      };
+
+      let a = k1;
+      let b = k2;
+      let local = 0;
+
+      if (q < 0.34) {
+        local = easeOut(q / 0.34);
+        a = k1; b = k2;
+      } else if (q < 0.67) {
+        local = easeOut((q - 0.34) / 0.33);
+        a = k2; b = k3;
+      } else {
+        local = easeOut((q - 0.67) / 0.33);
+        a = k3; b = k4;
+      }
+
+      x = lerp(a.x, b.x, local);
+      y = lerp(a.y, b.y, local);
+      scale = lerp(a.s, b.s, local);
+
+      // Tiny handheld/editorial micro-movement keeps long shots alive without
+      // becoming distracting or looking like a camera shake effect.
+      const micro = Math.sin(q * Math.PI * 4) * 0.006;
+      const microY = Math.sin(q * Math.PI * 3 + 1.2) * 0.004;
+      x += micro;
+      y += microY;
+
+      // A subtle breathing pulse gives long stills a natural slow push/pull.
+      // It is intentionally below 2% so the image never feels over-animated.
+      const breathe = Math.sin(q * Math.PI * 2) * (isPan ? 0.010 : 0.015);
+      scale += breathe;
+
+      // For a plain pan, keep the camera slightly more restrained.
+      if (isPan) scale = Math.min(scale, 1.12);
     }
 
-    requestedX = kb.startX + (panTargetX - kb.startX) * punchEased;
-    requestedY = kb.startY + (panTargetY - kb.startY) * punchEased;
-  } else {
-    requestedScale = kb.startScale + (kb.endScale - kb.startScale) * eased;
-    requestedX = kb.startX + (kb.endX - kb.startX) * eased;
-    requestedY = kb.startY + (kb.endY - kb.startY) * eased;
+    return {
+      scale: Math.max(1.02, scale),
+      x,
+      y,
+    };
   }
 
-  const scale = Math.max(1.02, Number.isFinite(requestedScale) ? requestedScale : 1.02);
+  const eased = easeInOutCubic(p);
+  const scale = Math.max(
+    1.02,
+    Number.isFinite(kb.startScale + (kb.endScale - kb.startScale) * eased)
+      ? kb.startScale + (kb.endScale - kb.startScale) * eased
+      : 1.02,
+  );
+  return {
+    scale,
+    x: kb.startX + (kb.endX - kb.startX) * eased,
+    y: kb.startY + (kb.endY - kb.startY) * eased,
+  };
+}
 
+function clampSafeTransform(
+  transform: { scale: number; x: number; y: number },
+) {
+  const scale = Math.max(1.02, Number.isFinite(transform.scale) ? transform.scale : 1.02);
   // For a centered image scaled to S, the safe translation range is
-  // approximately +/- (S - 1) / 2. Clamp both axes independently so no edge
-  // of the media can ever uncover the black parent background.
+  // approximately +/- (S - 1) / 2. Keep a small safety margin for rounding.
   const safeOffset = Math.max(0, (scale - 1) / 2 - 0.006);
-  const x = Math.max(-safeOffset, Math.min(safeOffset, Number.isFinite(requestedX) ? requestedX : 0));
-  const y = Math.max(-safeOffset, Math.min(safeOffset, Number.isFinite(requestedY) ? requestedY : 0));
-
-  return { scale, x, y };
+  return {
+    scale,
+    x: Math.max(-safeOffset, Math.min(safeOffset, Number.isFinite(transform.x) ? transform.x : 0)),
+    y: Math.max(-safeOffset, Math.min(safeOffset, Number.isFinite(transform.y) ? transform.y : 0)),
+  };
 }
 
 export const KenBurnsImage: React.FC<{ scene: TimelineScene; fastMotion?: boolean }> = ({ scene, fastMotion = false }) => {
@@ -78,7 +150,7 @@ export const KenBurnsImage: React.FC<{ scene: TimelineScene; fastMotion?: boolea
   const { durationInFrames } = useVideoConfig();
 
   const progress = durationInFrames > 1 ? frame / (durationInFrames - 1) : 0;
-  const { scale, x, y } = getSafeTransform(scene.kenBurns, progress, fastMotion);
+  const motion = getSafeTransform(scene.kenBurns, progress, fastMotion);\n  const { scale, x, y } = clampSafeTransform(motion);
   const mediaUrl = scene.media.url.startsWith('worker-asset:')
     ? staticFile(scene.media.url.slice('worker-asset:'.length))
     : scene.media.url;
