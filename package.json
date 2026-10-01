@@ -43,6 +43,7 @@
     "@remotion/media-utils": "4.0.506",
     "@remotion/player": "4.0.506",
     "@remotion/transitions": "4.0.506",
+    "@remotion/web-renderer": "4.0.506",
     "@supabase/supabase-js": "^2.112.2",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.101.1",
