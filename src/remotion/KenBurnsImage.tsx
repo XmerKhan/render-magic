@@ -150,7 +150,8 @@ export const KenBurnsImage: React.FC<{ scene: TimelineScene; fastMotion?: boolea
   const { durationInFrames } = useVideoConfig();
 
   const progress = durationInFrames > 1 ? frame / (durationInFrames - 1) : 0;
-  const motion = getSafeTransform(scene.kenBurns, progress, fastMotion);\n  const { scale, x, y } = clampSafeTransform(motion);
+  const motion = getSafeTransform(scene.kenBurns, progress, fastMotion);
+  const { scale, x, y } = clampSafeTransform(motion);
   const mediaUrl = scene.media.url.startsWith('worker-asset:')
     ? staticFile(scene.media.url.slice('worker-asset:'.length))
     : scene.media.url;
