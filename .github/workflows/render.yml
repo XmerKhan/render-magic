@@ -111,6 +111,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg
 
+      - name: Install render worker dependencies
+        working-directory: render-worker
+        run: npm install --no-audit --no-fund
+
       - name: Stitch chunks
         working-directory: render-worker
         env:
