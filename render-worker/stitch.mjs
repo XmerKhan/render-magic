@@ -80,41 +80,69 @@ async function downloadTo(url, dest) {
 
 async function uploadToVercelBlob(source, pathname) {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) throw new Error("BLOB_READ_WRITE_TOKEN is missing from the GitHub Actions stitch worker");
+  if (!token) {
+    throw new Error(
+      "BLOB_READ_WRITE_TOKEN is missing from the GitHub Actions stitch worker",
+    );
+  }
+
+  const { put } = await import("@vercel/blob");
+  const { Readable } = await import("node:stream");
   const size = fs.statSync(source).size;
-  const url = new URL("https://vercel.com/api/blob");
-  url.searchParams.set("pathname", pathname);
+
+  console.log(
+    `Uploading final video with Vercel Blob multipart upload: ${(
+      size /
+      1024 /
+      1024
+    ).toFixed(1)}MB`,
+  );
+
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(url, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "x-api-version": "12",
-          "x-content-type": "video/mp4",
-          "x-content-length": String(size),
-          "Content-Length": String(size),
+      const fileStream = fs.createReadStream(source);
+      const body = Readable.toWeb(fileStream);
+
+      const result = await put(pathname, body, {
+        access: "public",
+        token,
+        contentType: "video/mp4",
+        addRandomSuffix: false,
+        overwrite: true,
+        multipart: true,
+        onUploadProgress: ({ loaded, total, percentage }) => {
+          if (total && (percentage === 100 || percentage % 10 === 0)) {
+            console.log(
+              `Vercel Blob upload progress: ${percentage}% (${(
+                loaded /
+                1024 /
+                1024
+              ).toFixed(1)}MB / ${(total / 1024 / 1024).toFixed(1)}MB)`,
+            );
+          }
         },
-        body: fs.createReadStream(source),
-        duplex: "half",
       });
-      const body = await response.text();
-      if (!response.ok) throw new Error(`Vercel Blob upload failed [${response.status}]: ${body.slice(0, 500)}`);
-      const result = body ? JSON.parse(body) : null;
-      if (!result?.url) throw new Error("Vercel Blob upload succeeded but returned no download URL");
+
+      if (!result?.url) {
+        throw new Error("Vercel Blob upload succeeded but returned no download URL");
+      }
+
+      console.log(`Final video uploaded: ${result.url}`);
       return result.url;
     } catch (error) {
       lastError = error;
       if (attempt < 3) {
-        console.log(`Final video upload failed; retrying in ${attempt * 3}s (${attempt}/2)`);
+        console.log(
+          `Final video multipart upload failed; retrying in ${attempt * 3}s (${attempt}/2)`,
+        );
         await new Promise((resolve) => setTimeout(resolve, attempt * 3000));
       }
     }
   }
+
   throw lastError;
 }
-
 async function verifyVideo(file, expectedDuration = null) {
   const { stdout } = await run("ffprobe", [
     "-v", "error", "-show_entries", "format=duration:stream=index,codec_type,codec_name,width,height,duration",
