@@ -25,8 +25,8 @@ export interface RenderUploadRequest {
 export interface RenderUploadTarget {
   key: string;
   path: string;
-  /** Time-limited Vercel Blob upload URL (PUT). */
-  signedUrl: string;
+  contentType: string;
+  sizeBytes: number;
 }
 
 export interface RenderJobPayload {
