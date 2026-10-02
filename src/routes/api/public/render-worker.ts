@@ -6,8 +6,6 @@ import {
   type RenderJobPayload,
 } from "@/lib/renderTypes";
 
-const ASSET_URL_TTL = 60 * 60 * 6;
-
 /** A cold GitHub runner plus a long render needs long-lived asset URLs. */
 const ASSET_URL_TTL = 60 * 60 * 6;
 
