@@ -61,7 +61,7 @@ jobs:
 
       - name: Install worker dependencies
         working-directory: render-worker
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Install app dependencies (for composition module resolution)
         run: npm install --no-audit --no-fund
