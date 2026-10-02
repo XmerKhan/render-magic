@@ -54,6 +54,11 @@ const bodySchema = z.discriminatedUnion("action", [
     ),
   }),
   z.object({
+    action: z.literal("cleanup-assets"),
+    jobId: z.string().uuid(),
+    jobToken: z.string().uuid(),
+  }),
+  z.object({
     action: z.literal("fail"),
     jobId: z.string().uuid(),
     jobToken: z.string().uuid(),
@@ -343,13 +348,9 @@ export const Route = createFileRoute("/api/public/render-worker")({
             last_heartbeat_at: new Date().toISOString(),
           }).eq("id", job.id).neq("status", "stitching").neq("status", "done").neq("status", "completed");
 
-          if (parsed.final) {
-            await deleteTemporaryBlobPaths(Object.values(payload.assetPaths ?? {}));
-            await deleteTemporaryBlobPaths(
-              Array.from({ length: job.chunk_count || 1 }, (_, i) => chunkOutputPath(job.id, i)),
-            );
-          }
-
+          // Do not delete raw assets here. Other matrix workers may still be
+          // rendering and may still need the same voiceover/music/media.
+          // Cleanup is performed only after the entire render matrix finishes.
           return json({ ok: true });
         }
 
@@ -438,6 +439,11 @@ export const Route = createFileRoute("/api/public/render-worker")({
           // as the final video has been uploaded to the temporary download store.
           await deleteTemporaryBlobPaths(Object.values(payload.assetPaths ?? {}));
 
+          return json({ ok: true });
+        }
+
+        if (parsed.action === "cleanup-assets") {
+          await deleteTemporaryBlobPaths(Object.values(payload.assetPaths ?? {}));
           return json({ ok: true });
         }
 
