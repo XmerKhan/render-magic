@@ -9,6 +9,26 @@ const DEFAULT_RENDER_REPO = "XmerKhan/render-magic";
 const DEFAULT_RENDER_WORKFLOW = "render.yml";
 const DEFAULT_RENDER_REF = "main";
 const DEFAULT_CALLBACK_URL = "https://www.editsfieldai.online";
+const BLOB_UPLOAD_URL_TTL = 60 * 60;
+
+async function createBlobUploadUrl(pathname: string, upload: z.infer<typeof uploadRequestSchema>) {
+  const { issueSignedToken, presignUrl } = await import("@vercel/blob");
+  const validUntil = Date.now() + BLOB_UPLOAD_URL_TTL * 1000;
+  const token = await issueSignedToken({
+    pathname,
+    operations: ["put"],
+    allowedContentTypes: [upload.contentType],
+    maximumSizeInBytes: upload.sizeBytes,
+    allowOverwrite: true,
+    validUntil,
+  });
+  const { presignedUrl } = await presignUrl(token, {
+    pathname,
+    operation: "put",
+    validUntil,
+  });
+  return presignedUrl;
+}
 
 async function ensureStorageBucket(
   supabaseAdmin: typeof import("@/integrations/supabase/client.server").supabaseAdmin,
@@ -66,37 +86,30 @@ export const createRenderJob = createServerFn({ method: "POST" })
     const jobId = crypto.randomUUID();
     const outputPath = `${jobId}/editsfield-ai-${jobId}.mp4`;
 
-    await ensureStorageBucket(supabaseAdmin, ASSETS_BUCKET);
-    await ensureStorageBucket(supabaseAdmin, OUTPUT_BUCKET);
-
     const assetPaths: Record<string, string> = {};
     const targets: RenderUploadTarget[] = [];
 
     for (const upload of data.uploads) {
-      const path = `${jobId}/${upload.key}-${sanitizeFilename(upload.filename)}`;
+      const path = "render-assets/" + jobId + "/" + upload.key + "-" + sanitizeFilename(upload.filename);
       assetPaths[upload.key] = path;
 
-      const { data: signed, error } = await supabaseAdmin.storage
-        .from(ASSETS_BUCKET)
-        .createSignedUploadUrl(path, { upsert: true });
-
-      if (error || !signed) {
-        console.error("[createRenderJob] signed upload url failed", {
+      try {
+        const signedUrl = await createBlobUploadUrl(path, upload);
+        targets.push({
+          key: upload.key,
+          path,
+          signedUrl,
+        });
+      } catch (error) {
+        console.error("[createRenderJob] Vercel Blob upload URL failed", {
           filename: upload.filename,
           path,
           error,
         });
         throw new Error(
-          `Could not prepare upload for ${upload.filename}: ${error?.message ?? "Supabase did not return a signed upload URL"}`,
+          `Could not prepare upload for ${upload.filename}: ${error instanceof Error ? error.message : "Vercel Blob did not return a signed upload URL"}`,
         );
       }
-
-      targets.push({
-        key: upload.key,
-        path,
-        signedUrl: signed.signedUrl,
-        token: signed.token,
-      });
     }
 
     const payload: RenderJobPayload = {
