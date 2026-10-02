@@ -6,8 +6,7 @@ import {
   type RenderJobPayload,
 } from "@/lib/renderTypes";
 
-const ASSETS_BUCKET = "render-assets";
-const OUTPUT_BUCKET = "renders";
+const ASSET_URL_TTL = 60 * 60 * 6;
 
 /** A cold GitHub runner plus a long render needs long-lived asset URLs. */
 const ASSET_URL_TTL = 60 * 60 * 6;
@@ -148,15 +147,25 @@ export const Route = createFileRoute("/api/public/render-worker")({
             .eq("chunk_index", parsed.chunkIndex);
 
           const signedByKey: Record<string, string> = {};
+          const { issueSignedToken, presignUrl } = await import("@vercel/blob");
           for (const [key, assetPath] of Object.entries(payload.assetPaths ?? {})) {
-            const { data: signed, error: signError } = await supabaseAdmin.storage
-              .from(ASSETS_BUCKET)
-              .createSignedUrl(assetPath, ASSET_URL_TTL);
-            if (signError || !signed) {
-              console.error(`[render-worker] could not sign asset ${assetPath}`, signError);
+            try {
+              const validUntil = Date.now() + ASSET_URL_TTL * 1000;
+              const token = await issueSignedToken({
+                pathname: assetPath,
+                operations: ["get"],
+                validUntil,
+              });
+              const { presignedUrl } = await presignUrl(token, {
+                pathname: assetPath,
+                operation: "get",
+                validUntil,
+              });
+              signedByKey[key] = presignedUrl;
+            } catch (error) {
+              console.error(`[render-worker] could not sign Blob asset ${assetPath}`, error);
               return json({ error: `Missing media file for "${key}"` }, 500);
             }
-            signedByKey[key] = signed.signedUrl;
           }
 
           const resolved = JSON.parse(
@@ -415,13 +424,14 @@ export const Route = createFileRoute("/api/public/render-worker")({
 
           // Raw user media is only needed during rendering. Delete it as soon
           // as the final video has been uploaded to the temporary download store.
-          const { data: assetFiles } = await supabaseAdmin.storage
-            .from(ASSETS_BUCKET)
-            .list(job.id, { limit: 1000 });
-          if (assetFiles?.length) {
-            await supabaseAdmin.storage.from(ASSETS_BUCKET).remove(
-              assetFiles.map((file) => `${job.id}/${file.name}`),
-            );
+          const assetPaths = Object.values(payload.assetPaths ?? {});
+          if (assetPaths.length) {
+            try {
+              const { del } = await import("@vercel/blob");
+              await del(assetPaths, { token: process.env["BLOB_READ_WRITE_TOKEN"] });
+            } catch (error) {
+              console.error("[render-worker] temporary raw-media Blob cleanup failed", error);
+            }
           }
 
           return json({ ok: true });
