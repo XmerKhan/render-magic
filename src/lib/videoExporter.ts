@@ -2,6 +2,7 @@ import type { EditSettings, MediaAsset, TimelineData } from "@/types";
 import { getAuthoritativeTimelineFrames, getCompositionConfig } from "@/remotion/config";
 import { assetPlaceholder, type RenderUploadRequest } from "@/lib/renderTypes";
 import { createRenderJob, dispatchRenderJob, getRenderJob } from "@/lib/render.functions";
+import { upload } from "@vercel/blob/client";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_BACKOFF_MAX_MS = 15000;
@@ -217,27 +218,25 @@ export async function exportVideo(opts: ExportOptions): Promise<{ downloadUrl: s
     );
 
     try {
-      // Upload directly to the time-limited Vercel Blob URL. The browser
-      // never sends the media through a Vercel Function, avoiding the
-      // function request-body limit and Supabase Storage file-size limit.
-      const response = await fetch(target.signedUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": target.contentType,
-        },
-        body: file,
-        signal,
+      // Use Vercel's official client-upload flow. The browser uploads
+      // directly to Blob and multipart mode retries individual parts for
+      // large media, without sending the file through a Vercel Function.
+      const uploaded = await upload(target.path, file, {
+        access: "public",
+        contentType: target.contentType,
+        handleUploadUrl: job.uploadEndpoint,
+        clientPayload: JSON.stringify({
+          jobId: job.jobId,
+          jobToken: job.token,
+          key: target.key,
+          sizeBytes: target.sizeBytes,
+        }),
+        multipart: true,
+        abortSignal: signal,
       });
 
-      if (!response.ok) {
-        let detail = "";
-        try {
-          const body = await response.text();
-          detail = body ? `: ${body.slice(0, 300)}` : "";
-        } catch {
-          // Keep the HTTP status as the useful fallback.
-        }
-        throw new Error(`Vercel Blob returned HTTP ${response.status}${detail}`);
+      if (!uploaded?.url) {
+        throw new Error("Vercel Blob did not confirm the uploaded asset.");
       }
     } catch (error) {
       if (error instanceof CancelledError) throw error;
