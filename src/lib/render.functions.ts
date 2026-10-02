@@ -29,6 +29,18 @@ const jobRefSchema = z.object({
   token: z.string().uuid(),
 });
 
+const registerAssetsSchema = jobRefSchema.extend({
+  assets: z.array(
+    z.object({
+      key: z.string().min(1).max(120),
+      url: z.string().url().refine(
+        (value) => new URL(value).hostname.endsWith(".blob.vercel-storage.com"),
+        "Invalid Vercel Blob URL",
+      ),
+    }),
+  ).max(500),
+});
+
 function sanitizeFilename(name: string): string {
   const cleaned = name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
   return cleaned.length > 0 ? cleaned : "file";
@@ -93,6 +105,70 @@ export const createRenderJob = createServerFn({ method: "POST" })
       uploads: targets,
       uploadEndpoint: "/api/public/blob-upload",
     };
+  });
+
+export const registerRenderAssets = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => registerAssetsSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: job, error } = await supabaseAdmin
+      .from("render_jobs")
+      .select("id, access_token, payload")
+      .eq("id", data.jobId)
+      .maybeSingle();
+
+    if (error || !job || job.access_token !== data.token) {
+      throw new Error("Render job not found");
+    }
+
+    const payload = job.payload as unknown as RenderJobPayload;
+    const expectedPaths = payload.assetPaths ?? {};
+    const assetUrls: Record<string, string> = {};
+
+    for (const asset of data.assets) {
+      const expectedPath = expectedPaths[asset.key];
+      const parsedUrl = new URL(asset.url);
+      const actualPath = decodeURIComponent(parsedUrl.pathname.replace(/^\//, ""));
+
+      if (!expectedPath || actualPath !== expectedPath) {
+        throw new Error(`Uploaded asset "${asset.key}" does not match its authorized Blob path.`);
+      }
+
+      const response = await fetch(asset.url, { method: "HEAD", cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(
+          `Uploaded asset "${asset.key}" is not readable from Vercel Blob (HTTP ${response.status}).`,
+        );
+      }
+
+      assetUrls[asset.key] = asset.url;
+    }
+
+    if (Object.keys(assetUrls).length !== Object.keys(expectedPaths).length) {
+      throw new Error(
+        `Only ${Object.keys(assetUrls).length}/${Object.keys(expectedPaths).length} render assets were uploaded.`,
+      );
+    }
+
+    const nextPayload: RenderJobPayload = {
+      ...payload,
+      assetUrls,
+    };
+
+    const { error: updateError } = await supabaseAdmin
+      .from("render_jobs")
+      .update({
+        payload: JSON.parse(JSON.stringify(nextPayload)),
+        message: "Media uploaded and verified",
+      })
+      .eq("id", job.id);
+
+    if (updateError) {
+      throw new Error(`Could not save verified render assets: ${updateError.message}`);
+    }
+
+    return { verified: Object.keys(assetUrls).length };
   });
 
 export const cleanupRenderOutput = createServerFn({ method: "POST" })
