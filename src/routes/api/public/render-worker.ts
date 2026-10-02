@@ -167,6 +167,7 @@ export const Route = createFileRoute("/api/public/render-worker")({
               const { presignedUrl } = await presignUrl(token, {
                 pathname: assetPath,
                 operation: "get",
+                access: "public",
                 validUntil,
               });
               signedByKey[key] = presignedUrl;
