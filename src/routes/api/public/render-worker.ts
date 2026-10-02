@@ -435,15 +435,7 @@ export const Route = createFileRoute("/api/public/render-worker")({
 
           // Raw user media is only needed during rendering. Delete it as soon
           // as the final video has been uploaded to the temporary download store.
-          const assetPaths = Object.values(payload.assetPaths ?? {});
-          if (assetPaths.length) {
-            try {
-              const { del } = await import("@vercel/blob");
-              await del(assetPaths, { token: process.env["BLOB_READ_WRITE_TOKEN"] });
-            } catch (error) {
-              console.error("[render-worker] temporary raw-media Blob cleanup failed", error);
-            }
-          }
+          await deleteTemporaryBlobPaths(Object.values(payload.assetPaths ?? {}));
 
           return json({ ok: true });
         }
