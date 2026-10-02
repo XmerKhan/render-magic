@@ -171,15 +171,11 @@ export const Route = createFileRoute("/api/public/render-worker")({
           ) as { timeline: unknown; settings: unknown };
 
           const outputPath = chunkOutputPath(job.id, parsed.chunkIndex);
-          const { data: outputUpload, error: uploadError } = await supabaseAdmin.storage
-            .from(OUTPUT_BUCKET)
-            .createSignedUploadUrl(outputPath, { upsert: true });
 
-          if (uploadError || !outputUpload) {
-            console.error("[render-worker] chunk upload url failed", uploadError);
-            return json({ error: "Could not create the chunk upload URL" }, 500);
-          }
-
+          // Chunk MP4s are uploaded to Vercel Blob, not Supabase Storage.
+          // Supabase Free can reject a perfectly valid rendered chunk with
+          // HTTP 413 when it exceeds the project's Storage file-size limit.
+          // Blob multipart uploads avoid that project-level Supabase limit.
           return json({
             timeline: resolved.timeline,
             settings: resolved.settings,
@@ -188,7 +184,7 @@ export const Route = createFileRoute("/api/public/render-worker")({
             fps: payload.fps,
             durationInFrames: payload.durationInFrames,
             frameRange: [checkpoint.frame_from, checkpoint.frame_to],
-            outputUploadUrl: outputUpload.signedUrl,
+            outputUploadPath: outputPath,
             attempt,
             signedAssets: signedByKey,
           });
@@ -265,11 +261,16 @@ export const Route = createFileRoute("/api/public/render-worker")({
 
         if (parsed.action === "complete-chunk") {
           const outputPath = chunkOutputPath(job.id, parsed.chunkIndex);
-          const slash = outputPath.lastIndexOf("/");
-          const folder = outputPath.slice(0, slash);
-          const name = outputPath.slice(slash + 1);
-          const { data: listed } = await supabaseAdmin.storage.from(OUTPUT_BUCKET).list(folder, { search: name });
-          if (!listed?.some((file) => file.name === name)) return json({ error: "Uploaded chunk was not found" }, 400);
+
+          let chunkFound = false;
+          try {
+            const { head } = await import("@vercel/blob");
+            await head(outputPath, { token: process.env["BLOB_READ_WRITE_TOKEN"] });
+            chunkFound = true;
+          } catch (error) {
+            console.error("[render-worker] uploaded Blob chunk not found", error);
+          }
+          if (!chunkFound) return json({ error: "Uploaded chunk was not found in Vercel Blob" }, 400);
 
           // Idempotent completion. Multiple late callbacks/retries must never
           // move a completed chunk backwards.
@@ -339,53 +340,41 @@ export const Route = createFileRoute("/api/public/render-worker")({
           }
 
           // The render workflow only reaches stitch after every matrix job is
-          // successful. Storage is therefore the final source of truth for a
+          // successful. Vercel Blob is therefore the final source of truth for a
           // chunk. Recover a checkpoint if a stale callback left its DB status
           // behind even though the MP4 was uploaded successfully.
           const missing: number[] = [];
           for (let i = 0; i < parsed.chunkCount; i += 1) {
             const expectedPath = chunkOutputPath(job.id, i);
-            const slash = expectedPath.lastIndexOf("/");
-            const folder = expectedPath.slice(0, slash);
-            const name = expectedPath.slice(slash + 1);
-            const { data: listed, error: listError } = await supabaseAdmin.storage
-              .from(OUTPUT_BUCKET)
-              .list(folder, { search: name });
-            if (listError || !listed?.some((file) => file.name === name)) {
+            try {
+              const { head } = await import("@vercel/blob");
+              const blob = await head(expectedPath, {
+                token: process.env["BLOB_READ_WRITE_TOKEN"],
+              });
+              chunkUrls.push(blob.url);
+              const row = chunks.find((chunk) => chunk.chunk_index === i);
+              if (row?.status !== "completed") {
+                await supabaseAdmin
+                  .from("render_job_chunks")
+                  .update({
+                    status: "completed",
+                    progress: 100,
+                    output_path: expectedPath,
+                    completed_at: new Date().toISOString(),
+                    last_heartbeat_at: new Date().toISOString(),
+                    error: null,
+                  })
+                  .eq("job_id", job.id)
+                  .eq("chunk_index", i);
+              }
+            } catch (error) {
+              console.error(`[render-worker] could not read Blob chunk ${i}`, error);
               missing.push(i);
-              continue;
-            }
-
-            const row = chunks.find((chunk) => chunk.chunk_index === i);
-            if (row?.status !== "completed") {
-              await supabaseAdmin
-                .from("render_job_chunks")
-                .update({
-                  status: "completed",
-                  progress: 100,
-                  output_path: expectedPath,
-                  completed_at: new Date().toISOString(),
-                  last_heartbeat_at: new Date().toISOString(),
-                  error: null,
-                })
-                .eq("job_id", job.id)
-                .eq("chunk_index", i);
             }
           }
 
           if (missing.length) {
             return json({ error: `Missing rendered chunks: ${missing.join(", ")}` }, 409);
-          }
-
-          for (let i = 0; i < parsed.chunkCount; i += 1) {
-            const { data: signed, error: signError } = await supabaseAdmin.storage
-              .from(OUTPUT_BUCKET)
-              .createSignedUrl(chunkOutputPath(job.id, i), ASSET_URL_TTL);
-            if (signError || !signed) {
-              console.error(`[render-worker] could not sign chunk ${i}`, signError);
-              return json({ error: `Missing rendered chunk ${i}` }, 500);
-            }
-            chunkUrls.push(signed.signedUrl);
           }
 
           await supabaseAdmin
@@ -417,7 +406,12 @@ export const Route = createFileRoute("/api/public/render-worker")({
           const chunkPaths = Array.from({ length: job.chunk_count || 1 }, (_, i) =>
             chunkOutputPath(job.id, i),
           );
-          await supabaseAdmin.storage.from(OUTPUT_BUCKET).remove(chunkPaths);
+          try {
+            const { del } = await import("@vercel/blob");
+            await del(chunkPaths, { token: process.env["BLOB_READ_WRITE_TOKEN"] });
+          } catch (error) {
+            console.error("[render-worker] temporary Blob chunk cleanup failed", error);
+          }
 
           // Raw user media is only needed during rendering. Delete it as soon
           // as the final video has been uploaded to the temporary download store.
