@@ -151,19 +151,13 @@ export const cleanupRenderOutput = createServerFn({ method: "POST" })
       throw new Error("Vercel Blob is not configured for cleanup");
     }
 
-    const response = await fetch("https://vercel.com/api/blob/delete", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${blobToken}`,
-        "Content-Type": "application/json",
-        "x-api-version": "12",
-      },
-      body: JSON.stringify({ urls: [job.output_path] }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Could not delete temporary video [${response.status}]: ${body.slice(0, 300)}`);
+    try {
+      const { del } = await import("@vercel/blob");
+      await del(job.output_path, { token: blobToken });
+    } catch (error) {
+      throw new Error(
+        `Could not delete temporary video: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     await supabaseAdmin
