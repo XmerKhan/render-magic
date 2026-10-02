@@ -78,11 +78,24 @@ async function downloadUrlToFile(url, destination) {
   const response = await fetch(url);
   if (!response.ok || !response.body) throw new Error(`Asset download failed [${response.status}]: ${url}`);
   const file = fs.createWriteStream(destination);
-  await response.body.pipeTo(new WritableStream({
-    write(chunk) { return new Promise((resolve, reject) => file.write(Buffer.from(chunk), (error) => error ? reject(error) : resolve())); },
-    close() { return new Promise((resolve) => file.end(resolve)); },
-    abort(error) { file.destroy(error); },
-  }));
+  await response.body.pipeTo(
+    new WritableStream({
+      write(chunk) {
+        return new Promise((resolve, reject) =>
+          file.write(
+            Buffer.from(chunk),
+            (error) => (error ? reject(error) : resolve()),
+          ),
+        );
+      },
+      close() {
+        return new Promise((resolve) => file.end(resolve));
+      },
+      abort(error) {
+        file.destroy(error);
+      },
+    }),
+  );
 }
 
 async function downloadWorkerMarkedAssets(timeline) {
