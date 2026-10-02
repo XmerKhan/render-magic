@@ -5,8 +5,8 @@ import type { EditSettings, TimelineData } from "@/types";
  *
  * The browser never knows the storage paths or signed URLs, so every media URL
  * in the timeline it submits is replaced with `job-asset:<key>`. The server
- * resolves those placeholders to short-lived signed URLs when the render worker
- * claims the job.
+ * resolves those placeholders to short-lived Vercel Blob URLs when the render
+ * worker claims the job.
  */
 export const ASSET_PLACEHOLDER_PREFIX = "job-asset:";
 
@@ -32,7 +32,7 @@ export interface RenderUploadTarget {
 export interface RenderJobPayload {
   timeline: TimelineData;
   settings: EditSettings;
-  /** Placeholder key -> storage object path inside the `render-assets` bucket. */
+  /** Placeholder key -> temporary Vercel Blob pathname. */
   assetPaths: Record<string, string>;
   width: number;
   height: number;
