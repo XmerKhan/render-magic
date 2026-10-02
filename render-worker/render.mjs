@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { Readable } from "node:stream";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const JOB_ID = process.env.JOB_ID;
@@ -203,14 +204,28 @@ function resourceSnapshot() {
   return { cpuPercent: Math.round(cpuPercent), memoryMb: Math.round((os.totalmem() - os.freemem()) / 1024 / 1024) };
 }
 
-async function uploadFile(url, filePath) {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "video/mp4", "Content-Length": String(fs.statSync(filePath).size) },
-    body: fs.createReadStream(filePath),
-    duplex: "half",
-  });
-  if (!response.ok) throw new Error(`Chunk upload failed [${response.status}]: ${await response.text()}`);
+async function uploadChunk(pathname, filePath) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) throw new Error("BLOB_READ_WRITE_TOKEN is missing in the render worker");
+
+  const { put } = await import("@vercel/blob");
+  const fileStream = fs.createReadStream(filePath);
+  const body = Readable.toWeb(fileStream);
+
+  try {
+    const result = await put(pathname, body, {
+      access: "public",
+      token,
+      contentType: "video/mp4",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      multipart: true,
+    });
+    if (!result?.url) throw new Error("Vercel Blob did not return a chunk URL");
+    return result.url;
+  } finally {
+    fileStream.destroy();
+  }
 }
 
 async function main() {
@@ -319,7 +334,8 @@ async function main() {
   timings.encodeMs = muxingStartedAt ? renderFinishedAt - muxingStartedAt : 0;
   if (!fs.statSync(OUTPUT_FILE).size) throw new Error("Remotion produced an empty chunk");
   const uploadStartedAt = Date.now();
-  await uploadFile(claimed.outputUploadUrl, OUTPUT_FILE);
+  const uploadedChunkUrl = await uploadChunk(claimed.outputUploadPath, OUTPUT_FILE);
+  console.log(`Chunk uploaded to Vercel Blob: ${uploadedChunkUrl}`);
   timings.uploadMs = Date.now() - uploadStartedAt;
   await callApp({ action: "complete-chunk", chunkIndex: CHUNK_INDEX, chunkCount: CHUNK_COUNT });
   const elapsedSeconds = (Date.now() - startedAt) / 1000;
