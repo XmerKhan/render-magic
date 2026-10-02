@@ -159,39 +159,27 @@ export const Route = createFileRoute("/api/public/render-worker")({
             .eq("job_id", job.id)
             .eq("chunk_index", parsed.chunkIndex);
 
-          const signedByKey: Record<string, string> = {};
-          const { issueSignedToken, presignUrl } = await import("@vercel/blob");
-          for (const [key, assetPath] of Object.entries(payload.assetPaths ?? {})) {
-            try {
-              const validUntil = Date.now() + ASSET_URL_TTL * 1000;
-              const token = await issueSignedToken({
-                pathname: assetPath,
-                operations: ["get"],
-                validUntil,
-              });
-              const { presignedUrl } = await presignUrl(token, {
-                pathname: assetPath,
-                operation: "get",
-                access: "public",
-                validUntil,
-              });
-              signedByKey[key] = presignedUrl;
-            } catch (error) {
-              console.error(`[render-worker] could not sign Blob asset ${assetPath}`, error);
-              return json({ error: `Missing media file for "${key}"` }, 500);
-            }
-          }
-
+          // New jobs persist the exact public Blob URL returned by the browser
+          // upload and verify it before dispatch. This avoids any dependency on
+          // a second Blob credential configured on GitHub Actions.
+          const assetUrls = payload.assetUrls ?? {};
           const resolved = JSON.parse(
             JSON.stringify({ timeline: payload.timeline, settings: payload.settings }),
             (_key, value) => {
               if (typeof value === "string" && value.startsWith(ASSET_PLACEHOLDER_PREFIX)) {
                 const assetKey = value.slice(ASSET_PLACEHOLDER_PREFIX.length);
-                return signedByKey[assetKey] ?? null;
+                return assetUrls[assetKey] ?? null;
               }
               return value;
             },
           ) as { timeline: unknown; settings: unknown };
+
+          const missingAssetUrls = Object.keys(payload.assetPaths ?? {}).filter((key) => !assetUrls[key]);
+          if (missingAssetUrls.length) {
+            return json({
+              error: `Render assets were not verified before worker start: ${missingAssetUrls.join(", ")}`,
+            }, 409);
+          }
 
           const outputPath = chunkOutputPath(job.id, parsed.chunkIndex);
 
@@ -209,7 +197,7 @@ export const Route = createFileRoute("/api/public/render-worker")({
             frameRange: [checkpoint.frame_from, checkpoint.frame_to],
             outputUploadPath: outputPath,
             attempt,
-            signedAssets: signedByKey,
+            signedAssets: assetUrls,
           });
         }
 
