@@ -217,21 +217,15 @@ export async function exportVideo(opts: ExportOptions): Promise<{ downloadUrl: s
     );
 
     try {
-      // Use the exact signed URL created by the server instead of rebuilding
-      // the upload endpoint from the browser's VITE_SUPABASE_URL. This keeps
-      // the upload bound to the same Supabase project that signed the token
-      // and avoids "signature verification failed" when the client-side
-      // Supabase environment is stale or points at another project.
-      const form = new FormData();
-      form.append("cacheControl", "3600");
-      form.append("", file);
-
+      // Upload directly to the time-limited Vercel Blob URL. The browser
+      // never sends the media through a Vercel Function, avoiding the
+      // function request-body limit and Supabase Storage file-size limit.
       const response = await fetch(target.signedUrl, {
         method: "PUT",
         headers: {
-          "x-upsert": "true",
+          "Content-Type": target.contentType,
         },
-        body: form,
+        body: file,
         signal,
       });
 
@@ -243,7 +237,7 @@ export async function exportVideo(opts: ExportOptions): Promise<{ downloadUrl: s
         } catch {
           // Keep the HTTP status as the useful fallback.
         }
-        throw new Error(`Supabase Storage returned HTTP ${response.status}${detail}`);
+        throw new Error(`Vercel Blob returned HTTP ${response.status}${detail}`);
       }
     } catch (error) {
       if (error instanceof CancelledError) throw error;
