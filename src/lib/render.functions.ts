@@ -7,31 +7,6 @@ const DEFAULT_RENDER_REPO = "XmerKhan/render-magic";
 const DEFAULT_RENDER_WORKFLOW = "render.yml";
 const DEFAULT_RENDER_REF = "main";
 const DEFAULT_CALLBACK_URL = "https://www.editsfieldai.online";
-const BLOB_UPLOAD_URL_TTL = 60 * 60;
-
-async function createBlobUploadUrl(pathname: string, upload: z.infer<typeof uploadRequestSchema>) {
-  const { issueSignedToken, presignUrl } = await import("@vercel/blob");
-  const validUntil = Date.now() + BLOB_UPLOAD_URL_TTL * 1000;
-  const token = await issueSignedToken({
-    pathname,
-    operations: ["put"],
-    allowedContentTypes: [upload.contentType],
-    maximumSizeInBytes: upload.sizeBytes,
-    allowOverwrite: true,
-    validUntil,
-  });
-  const { presignedUrl } = await presignUrl(token, {
-    pathname,
-    operation: "put",
-    access: "public",
-    validUntil,
-    allowedContentTypes: [upload.contentType],
-    maximumSizeInBytes: upload.sizeBytes,
-    allowOverwrite: true,
-  });
-  return presignedUrl;
-}
-
 const uploadRequestSchema = z.object({
   key: z.string().min(1).max(120),
   filename: z.string().min(1).max(255),
@@ -74,23 +49,12 @@ export const createRenderJob = createServerFn({ method: "POST" })
       const path = "render-assets/" + jobId + "/" + upload.key + "-" + sanitizeFilename(upload.filename);
       assetPaths[upload.key] = path;
 
-      try {
-        const signedUrl = await createBlobUploadUrl(path, upload);
-        targets.push({
-          key: upload.key,
-          path,
-          signedUrl,
-        });
-      } catch (error) {
-        console.error("[createRenderJob] Vercel Blob upload URL failed", {
-          filename: upload.filename,
-          path,
-          error,
-        });
-        throw new Error(
-          `Could not prepare upload for ${upload.filename}: ${error instanceof Error ? error.message : "Vercel Blob did not return a signed upload URL"}`,
-        );
-      }
+      targets.push({
+        key: upload.key,
+        path,
+        contentType: upload.contentType,
+        sizeBytes: upload.sizeBytes,
+      });
     }
 
     const payload: RenderJobPayload = {
@@ -127,7 +91,7 @@ export const createRenderJob = createServerFn({ method: "POST" })
       jobId: job.id,
       token: job.access_token,
       uploads: targets,
-      uploadUrlTtlSeconds: BLOB_UPLOAD_URL_TTL,
+      uploadEndpoint: "/api/public/blob-upload",
     };
   });
 
