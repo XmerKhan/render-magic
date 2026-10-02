@@ -23,7 +23,11 @@ async function createBlobUploadUrl(pathname: string, upload: z.infer<typeof uplo
   const { presignedUrl } = await presignUrl(token, {
     pathname,
     operation: "put",
+    access: "public",
     validUntil,
+    allowedContentTypes: [upload.contentType],
+    maximumSizeInBytes: upload.sizeBytes,
+    allowOverwrite: true,
   });
   return presignedUrl;
 }
