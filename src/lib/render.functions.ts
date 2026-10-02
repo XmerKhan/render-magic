@@ -123,7 +123,7 @@ export const createRenderJob = createServerFn({ method: "POST" })
       jobId: job.id,
       token: job.access_token,
       uploads: targets,
-      uploadUrlTtlSeconds: UPLOAD_URL_TTL,
+      uploadUrlTtlSeconds: BLOB_UPLOAD_URL_TTL,
     };
   });
 
