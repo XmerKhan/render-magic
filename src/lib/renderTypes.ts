@@ -25,9 +25,8 @@ export interface RenderUploadRequest {
 export interface RenderUploadTarget {
   key: string;
   path: string;
-  /** Signed upload URL (PUT) valid for a short window. */
+  /** Time-limited Vercel Blob upload URL (PUT). */
   signedUrl: string;
-  token: string;
 }
 
 export interface RenderJobPayload {
