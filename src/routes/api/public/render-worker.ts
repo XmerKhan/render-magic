@@ -6,9 +6,6 @@ import {
   type RenderJobPayload,
 } from "@/lib/renderTypes";
 
-/** A cold GitHub runner plus a long render needs long-lived asset URLs. */
-const ASSET_URL_TTL = 60 * 60 * 6;
-
 const chunkRefSchema = z.object({
   jobId: z.string().uuid(),
   jobToken: z.string().uuid(),
