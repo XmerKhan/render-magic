@@ -3,8 +3,6 @@ import { z } from "zod";
 import type { RenderJobPayload, RenderJobState, RenderUploadTarget } from "./renderTypes";
 import { chunkFrameRange, chunkOutputPath, computeChunkCount } from "./renderTypes";
 
-const ASSETS_BUCKET = "render-assets";
-const OUTPUT_BUCKET = "renders";
 const DEFAULT_RENDER_REPO = "XmerKhan/render-magic";
 const DEFAULT_RENDER_WORKFLOW = "render.yml";
 const DEFAULT_RENDER_REF = "main";
@@ -29,27 +27,6 @@ async function createBlobUploadUrl(pathname: string, upload: z.infer<typeof uplo
   });
   return presignedUrl;
 }
-
-async function ensureStorageBucket(
-  supabaseAdmin: typeof import("@/integrations/supabase/client.server").supabaseAdmin,
-  bucketId: string,
-): Promise<void> {
-  const { data: existing } = await supabaseAdmin.storage.getBucket(bucketId);
-  if (existing) return;
-
-  const { error: createError } = await supabaseAdmin.storage.createBucket(bucketId, {
-    public: false,
-  });
-
-  if (createError && !/already exists|duplicate|409/i.test(createError.message)) {
-    throw new Error(
-      `Could not create Supabase Storage bucket "${bucketId}": ${createError.message}`,
-    );
-  }
-}
-
-/** Uploads are large; give the browser a generous window. */
-const UPLOAD_URL_TTL = 60 * 60;
 
 const uploadRequestSchema = z.object({
   key: z.string().min(1).max(120),
