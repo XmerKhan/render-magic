@@ -82,6 +82,7 @@ jobs:
           CHUNK_COUNT: ${{ inputs.chunk_count }}
           MAX_CHUNK_ATTEMPTS: 3
           RENDER_CONCURRENCY: 2
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
         run: |
           for attempt in 1 2 3; do
             echo "Chunk attempt $attempt/3"
