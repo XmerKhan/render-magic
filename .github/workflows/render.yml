@@ -94,6 +94,22 @@ jobs:
           done
           exit 1
 
+  cleanup-assets:
+    needs: render
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Remove temporary raw media
+        continue-on-error: true
+        env:
+          APP_URL: ${{ inputs.app_url }}
+          JOB_ID: ${{ inputs.job_id }}
+          JOB_TOKEN: ${{ inputs.job_token }}
+        run: |
+          curl --fail-with-body --retry 3 --retry-delay 2 \
+            -X POST "$APP_URL/api/public/render-worker" \
+            -H "Content-Type: application/json" \
+            --data "{\"action\":\"cleanup-assets\",\"jobId\":\"$JOB_ID\",\"jobToken\":\"$JOB_TOKEN\"}"
   stitch:
     needs: render
     runs-on: ubuntu-24.04
