@@ -68,6 +68,16 @@ function json(body: unknown, status = 200) {
   });
 }
 
+async function deleteTemporaryBlobPaths(paths: string[]) {
+  if (!paths.length) return;
+  try {
+    const { del } = await import("@vercel/blob");
+    await del(paths, { token: process.env["BLOB_READ_WRITE_TOKEN"] });
+  } catch (error) {
+    console.error("[render-worker] temporary Blob cleanup failed", error);
+  }
+}
+
 export const Route = createFileRoute("/api/public/render-worker")({
   server: {
     handlers: {
@@ -331,6 +341,14 @@ export const Route = createFileRoute("/api/public/render-worker")({
             current_chunk: parsed.chunkIndex,
             last_heartbeat_at: new Date().toISOString(),
           }).eq("id", job.id).neq("status", "stitching").neq("status", "done").neq("status", "completed");
+
+          if (parsed.final) {
+            await deleteTemporaryBlobPaths(Object.values(payload.assetPaths ?? {}));
+            await deleteTemporaryBlobPaths(
+              Array.from({ length: job.chunk_count || 1 }, (_, i) => chunkOutputPath(job.id, i)),
+            );
+          }
+
           return json({ ok: true });
         }
 
@@ -413,12 +431,7 @@ export const Route = createFileRoute("/api/public/render-worker")({
           const chunkPaths = Array.from({ length: job.chunk_count || 1 }, (_, i) =>
             chunkOutputPath(job.id, i),
           );
-          try {
-            const { del } = await import("@vercel/blob");
-            await del(chunkPaths, { token: process.env["BLOB_READ_WRITE_TOKEN"] });
-          } catch (error) {
-            console.error("[render-worker] temporary Blob chunk cleanup failed", error);
-          }
+          await deleteTemporaryBlobPaths(chunkPaths);
 
           // Raw user media is only needed during rendering. Delete it as soon
           // as the final video has been uploaded to the temporary download store.
@@ -439,6 +452,10 @@ export const Route = createFileRoute("/api/public/render-worker")({
           .from("render_jobs")
           .update({ status: "failed", error: parsed.error, message: "Render failed" })
           .eq("id", job.id);
+        await deleteTemporaryBlobPaths(Object.values(payload.assetPaths ?? {}));
+        await deleteTemporaryBlobPaths(
+          Array.from({ length: job.chunk_count || 1 }, (_, i) => chunkOutputPath(job.id, i)),
+        );
         return json({ ok: true });
       },
     },
