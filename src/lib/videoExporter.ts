@@ -1,7 +1,7 @@
 import type { EditSettings, MediaAsset, TimelineData } from "@/types";
 import { getAuthoritativeTimelineFrames, getCompositionConfig } from "@/remotion/config";
 import { assetPlaceholder, type RenderUploadRequest } from "@/lib/renderTypes";
-import { createRenderJob, dispatchRenderJob, getRenderJob } from "@/lib/render.functions";
+import { createRenderJob, dispatchRenderJob, getRenderJob, registerRenderAssets } from "@/lib/render.functions";
 import { upload } from "@vercel/blob/client";
 
 const POLL_INTERVAL_MS = 2000;
@@ -205,6 +205,7 @@ export async function exportVideo(opts: ExportOptions): Promise<{ downloadUrl: s
     throw new Error(`Could not create the render job: ${(e as Error).message}`);
   }
 
+  const uploadedAssets: Array<{ key: string; url: string }> = [];
   const total = job.uploads.length;
   for (let i = 0; i < total; i += 1) {
     throwIfAborted(signal);
@@ -238,11 +239,22 @@ export async function exportVideo(opts: ExportOptions): Promise<{ downloadUrl: s
       if (!uploaded?.url) {
         throw new Error("Vercel Blob did not confirm the uploaded asset.");
       }
+      uploadedAssets.push({ key: target.key, url: uploaded.url });
     } catch (error) {
       if (error instanceof CancelledError) throw error;
       throw new Error(`Upload failed for ${file.name}: ${error instanceof Error ? error.message : "unknown upload error"}`);
     }
   }
+
+  throwIfAborted(signal);
+  onProgress(12.5, "Verifying uploaded media...");
+  await registerRenderAssets({
+    data: {
+      jobId: job.jobId,
+      token: job.token,
+      assets: uploadedAssets,
+    },
+  });
 
   throwIfAborted(signal);
   onProgress(13, "Starting the render worker...");
