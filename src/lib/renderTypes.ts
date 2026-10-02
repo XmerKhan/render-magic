@@ -34,6 +34,8 @@ export interface RenderJobPayload {
   settings: EditSettings;
   /** Placeholder key -> temporary Vercel Blob pathname. */
   assetPaths: Record<string, string>;
+  /** Placeholder key -> the exact public Blob URL returned after upload. */
+  assetUrls: Record<string, string>;
   width: number;
   height: number;
   fps: number;
