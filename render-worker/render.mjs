@@ -21,7 +21,11 @@ const run = promisify(execFile);
 if (!JOB_ID || !JOB_TOKEN || !APP_URL) {
   throw new Error("JOB_ID, JOB_TOKEN and APP_URL are required");
 }
-if (!Number.isInteger(CHUNK_INDEX) || !Number.isInteger(CHUNK_COUNT) || CHUNK_COUNT < 1) {
+if (
+  !Number.isInteger(CHUNK_INDEX) ||
+  !Number.isInteger(CHUNK_COUNT) ||
+  CHUNK_COUNT < 1
+) {
   throw new Error("CHUNK_INDEX and CHUNK_COUNT must be valid integers");
 }
 
@@ -39,7 +43,10 @@ async function callApp(body, { retries = 4 } = {}) {
     try {
       const response = await fetch(WORKER_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "User-Agent": "EditsfieldAI-Render-Worker" },
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "EditsfieldAI-Render-Worker",
+        },
         body: JSON.stringify({ ...body, jobId: JOB_ID, jobToken: JOB_TOKEN }),
       });
       const text = await response.text();
@@ -77,15 +84,16 @@ function localPublicUrlFromWorkerAsset(url) {
 
 async function downloadUrlToFile(url, destination) {
   const response = await fetch(url);
-  if (!response.ok || !response.body) throw new Error(`Asset download failed [${response.status}]: ${url}`);
+  if (!response.ok || !response.body) {
+    throw new Error(`Asset download failed [${response.status}]: ${url}`);
+  }
   const file = fs.createWriteStream(destination);
   await response.body.pipeTo(
     new WritableStream({
       write(chunk) {
         return new Promise((resolve, reject) =>
-          file.write(
-            Buffer.from(chunk),
-            (error) => (error ? reject(error) : resolve()),
+          file.write(Buffer.from(chunk), (error) =>
+            error ? reject(error) : resolve(),
           ),
         );
       },
@@ -104,7 +112,9 @@ async function downloadWorkerMarkedAssets(timeline) {
     timeline?.voiceoverUrl,
     timeline?.musicUrl,
     ...(timeline?.scenes ?? []).map((scene) => scene?.media?.url),
-  ].filter((value) => typeof value === "string" && value.startsWith("worker-asset:")));
+  ].filter(
+    (value) => typeof value === "string" && value.startsWith("worker-asset:"),
+  ));
 
   const replacements = new Map();
   for (const marker of urls) {
@@ -120,9 +130,18 @@ async function downloadWorkerMarkedAssets(timeline) {
 
 async function optimizeStillImage(source, destination, width, height) {
   await run("ffmpeg", [
-    "-y", "-v", "error", "-i", source,
-    "-vf", `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`,
-    "-frames:v", "1", "-q:v", "2", destination,
+    "-y",
+    "-v",
+    "error",
+    "-i",
+    source,
+    "-vf",
+    `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`,
+    "-frames:v",
+    "1",
+    "-q:v",
+    "2",
+    destination,
   ]);
 }
 
@@ -139,9 +158,14 @@ function assetsNeededForFrameRange(signedAssets, timeline, settings, frameRange)
   const fps = timeline?.fps || settings?.fps || 30;
   let seriesFrame = settings?.showIntro ? Math.round(3 * fps) : 0;
   for (const [index, scene] of (timeline?.scenes ?? []).entries()) {
-    const holdFrames = index < timeline.scenes.length - 1
-      ? transitionFrames(scene.transitionOut, fps, settings?.transitionDuration ?? 0)
-      : 0;
+    const holdFrames =
+      index < timeline.scenes.length - 1
+        ? transitionFrames(
+            scene.transitionOut,
+            fps,
+            settings?.transitionDuration ?? 0,
+          )
+        : 0;
     // VideoComposition preserves the original scene start time and extends the
     // outgoing scene with a frozen tail during the transition overlap.
     const sceneEnd = seriesFrame + scene.durationFrames + holdFrames - 1;
@@ -200,8 +224,15 @@ function chooseConcurrency() {
 }
 
 function resourceSnapshot() {
-  const cpuPercent = os.cpus().length ? Math.min(100, os.loadavg()[0] / os.cpus().length * 100) : 0;
-  return { cpuPercent: Math.round(cpuPercent), memoryMb: Math.round((os.totalmem() - os.freemem()) / 1024 / 1024) };
+  const cpuPercent = os.cpus().length
+    ? Math.min(100, (os.loadavg()[0] / os.cpus().length) * 100)
+    : 0;
+  return {
+    cpuPercent: Math.round(cpuPercent),
+    memoryMb: Math.round(
+      (os.totalmem() - os.freemem()) / 1024 / 1024,
+    ),
+  };
 }
 
 async function uploadChunk(pathname, filePath) {
@@ -255,7 +286,13 @@ async function main() {
     publicDir: PUBLIC_DIR,
     webpackOverride: (config) => ({
       ...config,
-      resolve: { ...config.resolve, alias: { ...(config.resolve?.alias ?? {}), "@": path.resolve(__dirname, "../src") } },
+      resolve: {
+        ...config.resolve,
+        alias: {
+          ...(config.resolve?.alias ?? {}),
+          "@": path.resolve(__dirname, "../src"),
+        },
+      },
     }),
   });
   timings.bundleMs = Date.now() - bundleStartedAt;
@@ -270,8 +307,12 @@ async function main() {
   const offthreadVideoThreads = 1;
   const offthreadVideoCacheSizeInBytes = 4 * 1024 ** 3;
 
-  console.log(`Rendering ${composition.width}x${composition.height} @ ${composition.fps}fps, frames ${frameFrom}-${frameTo}`);
-  console.log(`Resources: ${os.cpus().length} CPU(s), ${Math.round(os.totalmem() / 1024 ** 3)}GB RAM; concurrency ${concurrency}; OffthreadVideo cache 4096MB; video threads ${offthreadVideoThreads}`);
+  console.log(
+    `Rendering ${composition.width}x${composition.height} @ ${composition.fps}fps, frames ${frameFrom}-${frameTo}`,
+  );
+  console.log(
+    `Resources: ${os.cpus().length} CPU(s), ${Math.round(os.totalmem() / 1024 ** 3)}GB RAM; concurrency ${concurrency}; OffthreadVideo cache 4096MB; video threads ${offthreadVideoThreads}`,
+  );
 
   let progress = 0;
   let renderedFrames = 0;
