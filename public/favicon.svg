@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+<title>Editsfield AI</title>
+<rect width="512" height="512" rx="96" fill="#f59e0b"/>
+<rect x="96" y="112" width="320" height="288" rx="52" fill="#09090b"/>
+<rect x="168" y="168" width="176" height="176" rx="24" fill="#f59e0b"/>
+<g fill="#f59e0b">
+<rect x="112" y="128" width="48" height="32" rx="10"/>
+<rect x="352" y="128" width="48" height="32" rx="10"/>
+<rect x="112" y="190" width="48" height="32" rx="10"/>
+<rect x="352" y="190" width="48" height="32" rx="10"/>
+<rect x="112" y="290" width="48" height="32" rx="10"/>
+<rect x="352" y="290" width="48" height="32" rx="10"/>
+<rect x="112" y="352" width="48" height="32" rx="10"/>
+<rect x="352" y="352" width="48" height="32" rx="10"/>
+</g>
+</svg>
