@@ -24,91 +24,50 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = fal
 
   if (fastMotion) {
     /*
-     * Professional documentary motion has two layers:
-     * 1) a very fast editorial punch right at the scene entrance;
-     * 2) continuous camera movement for the rest of the shot.
+     * Professional documentary motion:
+     * - a short entrance punch
+     * - then one continuous, eased camera path
      *
-     * The second layer is intentionally made from several slow keyframes
-     * instead of one long Ken-Burns interpolation. This prevents a 5-10s
-     * still image from looking frozen after the transition.
+     * The old implementation chained several independent easeOut segments.
+     * Each segment restarted its velocity at the next keyframe, which made
+     * long scenes visibly jerk or suddenly accelerate in the middle. Keeping
+     * one continuous eased curve removes those speed discontinuities.
      */
     const easeOut = (t: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
     const baseX = kb.startX;
     const baseY = kb.startY;
     const targetX = kb.endX;
     const targetY = kb.endY;
+    const startScale = Math.max(1.02, kb.startScale);
+    const finalScale = Math.max(1.02, kb.endScale);
 
-    let x: number;
-    let y: number;
-    let scale: number;
-
-    if (p < 0.12) {
-      // Fast entrance punch: immediate zoom/camera snap.
-      const t = easeOut(p / 0.12);
-      x = lerp(baseX, targetX, t);
-      y = lerp(baseY, targetY, t);
-      scale = lerp(Math.max(1.02, kb.startScale), Math.max(1.06, kb.endScale + 0.035), t);
-    } else {
-      // Continuous mid-shot camera choreography.
-      const q = (p - 0.12) / 0.88;
-      const isZoomOut = kb.direction.startsWith('zoom-out');
-      const isPan = kb.direction.includes('pan-');
-
-      // Four editorial keyframes. Values are deliberately small; safeTransform
-      // below clamps them against the available overscan.
-      const k1 = { x: targetX, y: targetY, s: isZoomOut ? 1.045 : 1.12 };
-      const k2 = {
-        x: targetX * -0.72,
-        y: targetY * -0.55,
-        s: isZoomOut ? 1.085 : 1.065,
+    if (p < 0.10) {
+      // One quick but smooth entrance punch. No sudden frame-to-frame jump.
+      const t = easeOut(p / 0.10);
+      return {
+        scale: lerp(startScale, finalScale + 0.025, t),
+        x: lerp(baseX, targetX, t),
+        y: lerp(baseY, targetY, t),
       };
-      const k3 = {
-        x: targetX * 0.52,
-        y: targetY * 0.36,
-        s: isZoomOut ? 1.025 : 1.135,
-      };
-      const k4 = {
-        x: targetX * -0.25,
-        y: targetY * -0.18,
-        s: isZoomOut ? 1.055 : 1.105,
-      };
-
-      let a = k1;
-      let b = k2;
-      let local = 0;
-
-      if (q < 0.34) {
-        local = easeOut(q / 0.34);
-        a = k1; b = k2;
-      } else if (q < 0.67) {
-        local = easeOut((q - 0.34) / 0.33);
-        a = k2; b = k3;
-      } else {
-        local = easeOut((q - 0.67) / 0.33);
-        a = k3; b = k4;
-      }
-
-      x = lerp(a.x, b.x, local);
-      y = lerp(a.y, b.y, local);
-      scale = lerp(a.s, b.s, local);
-
-      // Tiny handheld/editorial micro-movement keeps long shots alive without
-      // becoming distracting or looking like a camera shake effect.
-      const micro = Math.sin(q * Math.PI * 4) * 0.006;
-      const microY = Math.sin(q * Math.PI * 3 + 1.2) * 0.004;
-      x += micro;
-      y += microY;
-
-      // A subtle breathing pulse gives long stills a natural slow push/pull.
-      // It is intentionally below 2% so the image never feels over-animated.
-      const breathe = Math.sin(q * Math.PI * 2) * (isPan ? 0.010 : 0.015);
-      scale += breathe;
-
-      // For a plain pan, keep the camera slightly more restrained.
-      if (isPan) scale = Math.min(scale, 1.12);
     }
+
+    // After the punch, keep a single continuous curve for the whole shot.
+    const q = (p - 0.10) / 0.90;
+    const smooth = easeInOutCubic(q);
+    const isZoomOut = kb.direction.startsWith('zoom-out');
+    const isPan = kb.direction.includes('pan-');
+
+    // Drift gently back toward the starting camera position. The arc is
+    // deliberately small so it reads as a camera move rather than a shake.
+    const driftAmount = isPan ? 0.14 : 0.20;
+    const x = lerp(targetX, targetX + (baseX - targetX) * driftAmount, smooth);
+    const y = lerp(targetY, targetY + (baseY - targetY) * driftAmount, smooth);
+
+    // Keep the professional zoom subtle after the entrance punch.
+    const settleScale = isZoomOut ? Math.max(1.02, finalScale) : Math.max(1.02, finalScale);
+    const breathing = Math.sin(smooth * Math.PI) * (isPan ? 0.004 : 0.007);
+    const scale = lerp(finalScale + 0.025, settleScale, smooth) + breathing;
 
     return {
       scale: Math.max(1.02, scale),
