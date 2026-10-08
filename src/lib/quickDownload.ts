@@ -22,7 +22,19 @@ export async function quickDownloadVideo({
     );
   }
 
-  const config = getCompositionConfig(timeline, settings);
+  const fullConfig = getCompositionConfig(timeline, settings);
+
+  // Quick Download is intentionally capped at a 1280px long edge. It keeps
+  // the exact same timeline, cuts, captions, audio and camera motion, but
+  // avoids spending hours encoding a 1080p/4K browser render. High Quality
+  // Render & Download remains the full-resolution path.
+  const quickLongEdge = Math.min(1280, Math.max(fullConfig.width, fullConfig.height));
+  const quickScale = quickLongEdge / Math.max(fullConfig.width, fullConfig.height);
+  const config = {
+    ...fullConfig,
+    width: Math.max(2, Math.round((fullConfig.width * quickScale) / 2) * 2),
+    height: Math.max(2, Math.round((fullConfig.height * quickScale) / 2) * 2),
+  };
 
   const result = await renderMediaOnWeb({
     composition: {
