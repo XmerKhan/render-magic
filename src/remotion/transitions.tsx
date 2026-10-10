@@ -35,7 +35,8 @@ const flashWhite = (): TransitionPresentation<Record<string, never>> => ({
  * frame. Keep the same general motion language with scale + opacity, which is
  * compositor-friendly and substantially cheaper.
  */
-const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 /**
  * Professional transitions are deliberately short: the goal is a snap, not
@@ -45,7 +46,7 @@ const fastZoom = (): TransitionPresentation<Record<string, never>> => ({
   component: ({ children, presentationProgress, presentationDirection }) => {
     const entering = presentationDirection === "entering";
     const p = Math.max(0, Math.min(1, presentationProgress));
-    const eased = easeOutCubic(p);
+    const eased = easeInOutCubic(p);
     const scale = entering
       ? 1.22 - eased * 0.22
       : 1 + eased * 0.22;
