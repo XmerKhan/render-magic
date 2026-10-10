@@ -1,8 +1,13 @@
 import { Img, useCurrentFrame, useVideoConfig, staticFile } from 'remotion';
 import type { TimelineScene, KenBurnsConfig } from '@/types';
 
-const easeInOutCubic = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+// Smooth quintic easing avoids abrupt acceleration changes during camera moves.
+const easeInOutCubic = (t: number) => {
+  const p = Math.max(0, Math.min(1, t));
+  return p < 0.5
+    ? 16 * p * p * p * p * p
+    : 1 - Math.pow(-2 * p + 2, 5) / 2;
+};
 
 /**
  * Ken Burns transforms must never move a 100%-sized image far enough that its
