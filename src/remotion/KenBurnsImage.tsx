@@ -23,60 +23,25 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = fal
   const p = Math.max(0, Math.min(1, progress));
 
   if (fastMotion) {
-    /*
-     * Professional documentary motion:
-     * - a short entrance punch
-     * - then one continuous, eased camera path
-     *
-     * The old implementation chained several independent easeOut segments.
-     * Each segment restarted its velocity at the next keyframe, which made
-     * long scenes visibly jerk or suddenly accelerate in the middle. Keeping
-     * one continuous eased curve removes those speed discontinuities.
-     */
-    const easeOut = (t: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-    const baseX = kb.startX;
-    const baseY = kb.startY;
-    const targetX = kb.endX;
-    const targetY = kb.endY;
+    // Professional mode should feel like a controlled camera move, not a
+    // fast punch followed by a reversal. Use one continuous ease curve for
+    // scale and position across the entire shot so velocity ramps smoothly
+    // at the beginning and end with no mid-shot speed discontinuity.
     const startScale = Math.max(1.02, kb.startScale);
-    const finalScale = Math.max(1.02, kb.endScale);
-
-    if (p < 0.10) {
-      // One quick but smooth entrance punch. No sudden frame-to-frame jump.
-      const t = easeOut(p / 0.10);
-      return {
-        scale: lerp(startScale, finalScale + 0.025, t),
-        x: lerp(baseX, targetX, t),
-        y: lerp(baseY, targetY, t),
-      };
-    }
-
-    // After the punch, keep a single continuous curve for the whole shot.
-    const q = (p - 0.10) / 0.90;
-    const smooth = easeInOutCubic(q);
-    const isZoomOut = kb.direction.startsWith('zoom-out');
-    const isPan = kb.direction.includes('pan-');
-
-    // Drift gently back toward the starting camera position. The arc is
-    // deliberately small so it reads as a camera move rather than a shake.
-    const driftAmount = isPan ? 0.14 : 0.20;
-    const x = lerp(targetX, targetX + (baseX - targetX) * driftAmount, smooth);
-    const y = lerp(targetY, targetY + (baseY - targetY) * driftAmount, smooth);
-
-    // Keep the professional zoom subtle after the entrance punch.
-    const settleScale = isZoomOut ? Math.max(1.02, finalScale) : Math.max(1.02, finalScale);
-    const breathing = Math.sin(smooth * Math.PI) * (isPan ? 0.004 : 0.007);
-    const scale = lerp(finalScale + 0.025, settleScale, smooth) + breathing;
+    const endScale = Math.max(1.02, kb.endScale);
+    const scale = startScale + (endScale - startScale) * eased;
+    const x = kb.startX + (kb.endX - kb.startX) * eased;
+    const y = kb.startY + (kb.endY - kb.startY) * eased;
+    const gentleBreathing = Math.sin(p * Math.PI) * 0.0025;
 
     return {
-      scale: Math.max(1.02, scale),
+      scale: Math.max(1.02, scale + gentleBreathing),
       x,
       y,
     };
   }
 
-  const eased = easeInOutCubic(p);
+  const eased = easeInOutCubic(p);;
   const scale = Math.max(
     1.02,
     Number.isFinite(kb.startScale + (kb.endScale - kb.startScale) * eased)
