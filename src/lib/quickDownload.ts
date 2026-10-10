@@ -1,13 +1,17 @@
 import { renderMediaOnWeb } from "@remotion/web-renderer";
 import type { TimelineData, EditSettings } from "@/types";
 import { VideoComposition } from "@/remotion/VideoComposition";
-import { getCompositionConfig } from "@/remotion/config";
+import { ASPECT_RATIOS, getCompositionConfig } from "@/remotion/config";
 
 export interface QuickDownloadOptions {
   timeline: TimelineData;
   settings: EditSettings;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
+}
+
+function even(value: number) {
+  return Math.max(2, Math.round(value / 2) * 2);
 }
 
 export async function quickDownloadVideo({
@@ -23,26 +27,28 @@ export async function quickDownloadVideo({
   }
 
   const config = getCompositionConfig(timeline, settings);
+  // Always export at 1080p long-edge resolution while preserving aspect ratio.
+  const aspectRatio = ASPECT_RATIOS[settings.aspectRatio];
+  const scale = 1920 / Math.max(aspectRatio.width, aspectRatio.height);
+  const width = even(aspectRatio.width * scale);
+  const height = even(aspectRatio.height * scale);
 
-  // Keep Quick Download at the selected export resolution (1080p by default).
-  // Speed comes from hardware-preferred encoding and not yielding between
-  // expensive render phases; bitrate stays high so this is not a low-quality
-  // proxy export.
   const result = await renderMediaOnWeb({
     composition: {
       component: VideoComposition,
       durationInFrames: config.durationInFrames,
       fps: config.fps,
-      width: config.width,
-      height: config.height,
+      width,
+      height,
       id: "EditsfieldAIQuickDownload",
     },
     inputProps: { timeline, settings },
     container: "mp4",
     videoCodec: "h264",
     audioCodec: "aac",
-    videoBitrate: "high",
-    audioBitrate: "high",
+    // High-quality H.264 1080p with AAC audio; hardware encoding is preferred.
+    videoBitrate: 12_000_000,
+    audioBitrate: 192_000,
     hardwareAcceleration: "prefer-hardware",
     pageResponsiveness: "disabled",
     keyframeIntervalInSeconds: 4,
