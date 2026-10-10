@@ -21,6 +21,7 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = fal
   }
 
   const p = Math.max(0, Math.min(1, progress));
+  const eased = easeInOutCubic(p);
 
   if (fastMotion) {
     // Professional mode should feel like a controlled camera move, not a
@@ -41,7 +42,6 @@ function getSafeTransform(kb: KenBurnsConfig, progress: number, fastMotion = fal
     };
   }
 
-  const eased = easeInOutCubic(p);;
   const scale = Math.max(
     1.02,
     Number.isFinite(kb.startScale + (kb.endScale - kb.startScale) * eased)
