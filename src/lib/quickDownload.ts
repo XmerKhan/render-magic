@@ -22,20 +22,12 @@ export async function quickDownloadVideo({
     );
   }
 
-  const fullConfig = getCompositionConfig(timeline, settings);
+  const config = getCompositionConfig(timeline, settings);
 
-  // Quick Download is intentionally capped at a 1280px long edge. It keeps
-  // the exact same timeline, cuts, captions, audio and camera motion, but
-  // avoids spending hours encoding a 1080p/4K browser render. High Quality
-  // Render & Download remains the full-resolution path.
-  const quickLongEdge = Math.min(1280, Math.max(fullConfig.width, fullConfig.height));
-  const quickScale = quickLongEdge / Math.max(fullConfig.width, fullConfig.height);
-  const config = {
-    ...fullConfig,
-    width: Math.max(2, Math.round((fullConfig.width * quickScale) / 2) * 2),
-    height: Math.max(2, Math.round((fullConfig.height * quickScale) / 2) * 2),
-  };
-
+  // Keep Quick Download at the selected export resolution (1080p by default).
+  // Speed comes from hardware-preferred encoding and not yielding between
+  // expensive render phases; bitrate stays high so this is not a low-quality
+  // proxy export.
   const result = await renderMediaOnWeb({
     composition: {
       component: VideoComposition,
@@ -49,9 +41,10 @@ export async function quickDownloadVideo({
     container: "mp4",
     videoCodec: "h264",
     audioCodec: "aac",
-    videoBitrate: "low",
-    audioBitrate: "medium",
-    hardwareAcceleration: "if-possible",
+    videoBitrate: "high",
+    audioBitrate: "high",
+    hardwareAcceleration: "prefer-hardware",
+    pageResponsiveness: "disabled",
     keyframeIntervalInSeconds: 4,
     signal,
     onProgress: ({ progress }) => onProgress?.(Math.max(0, Math.min(1, progress))),
