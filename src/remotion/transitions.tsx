@@ -35,8 +35,14 @@ const flashWhite = (): TransitionPresentation<Record<string, never>> => ({
  * frame. Keep the same general motion language with scale + opacity, which is
  * compositor-friendly and substantially cheaper.
  */
-const easeInOutCubic = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+// Quintic smoothstep: zero velocity and acceleration at both ends, which
+// avoids the abrupt mid-transition speed changes of simpler easing curves.
+const easeInOutCubic = (t: number) => {
+  const p = Math.max(0, Math.min(1, t));
+  return p < 0.5
+    ? 16 * p * p * p * p * p
+    : 1 - Math.pow(-2 * p + 2, 5) / 2;
+};
 
 /**
  * Professional transitions are deliberately short: the goal is a snap, not
