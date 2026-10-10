@@ -223,7 +223,7 @@ export default function App() {
             <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
             <div>
               <h2 className="text-sm font-semibold text-zinc-100">Quick Download</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Fast export of the same edits • max 1280px long edge</p>
+              <p className="text-xs text-zinc-500 mt-0.5">1080p-quality MP4 • hardware encoding when supported</p>
             </div>
           </div>
           <div className="mt-5 h-2 rounded-full bg-zinc-800 overflow-hidden">
