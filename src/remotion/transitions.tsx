@@ -67,7 +67,7 @@ const fastWhipPan = (): TransitionPresentation<Record<string, never>> => ({
   component: ({ children, presentationProgress, presentationDirection }) => {
     const entering = presentationDirection === "entering";
     const p = Math.max(0, Math.min(1, presentationProgress));
-    const eased = easeOutCubic(p);
+    const eased = easeInOutCubic(p);
     const x = entering
       ? 105 - eased * 105
       : eased * -105;
