@@ -164,16 +164,65 @@ export default function App() {
     const controller = new AbortController();
     quickAbortRef.current = controller;
     setQuickDownload({ active: true, progress: 0, error: '' });
+
+    let fileWritable: {
+      close: () => Promise<void>;
+      abort?: (reason?: unknown) => Promise<void>;
+    } | null = null;
+
     try {
+      const fileName = `editsfield-quick-${Date.now()}.mp4`;
+      const picker = (window as Window & {
+        showSaveFilePicker?: (options?: unknown) => Promise<{
+          createWritable: () => Promise<{
+            close: () => Promise<void>;
+            abort?: (reason?: unknown) => Promise<void>;
+          }>;
+        }>;
+      }).showSaveFilePicker;
+
+      // Pick the destination before rendering, then stream encoded MP4 chunks
+      // directly to disk. This avoids holding a full 12-minute 1080p MP4 in RAM.
+      if (picker) {
+        try {
+          const handle = await picker({
+            suggestedName: fileName,
+            types: [{ description: "MP4 video", accept: { "video/mp4": [".mp4"] } }],
+          });
+          fileWritable = await handle.createWritable();
+        } catch (error) {
+          if ((error as DOMException)?.name === "AbortError") {
+            setQuickDownload({ active: false, progress: 0, error: '' });
+            return;
+          }
+          // If the file picker is unavailable/blocked, fall back to a Blob download.
+        }
+      }
+
       const blob = await quickDownloadVideo({
         timeline,
         settings,
         signal: controller.signal,
+        outputWritable: fileWritable
+          ? (fileWritable as unknown as WritableStream<Uint8Array>)
+          : undefined,
         onProgress: (value) => setQuickDownload((prev) => ({ ...prev, progress: Math.round(value * 100) })),
       });
-      await saveQuickDownload(blob, `editsfield-quick-${Date.now()}.mp4`);
+
+      if (fileWritable) {
+        await fileWritable.close();
+      } else if (blob) {
+        await saveQuickDownload(blob, fileName);
+      } else {
+        throw new Error("The browser did not produce an MP4 file.");
+      }
       setQuickDownload({ active: false, progress: 100, error: '' });
     } catch (error) {
+      try {
+        await fileWritable?.abort?.(error);
+      } catch {
+        // Ignore cleanup errors after a failed or cancelled export.
+      }
       if (!controller.signal.aborted) {
         setQuickDownload({ active: false, progress: 0, error: (error as Error).message || 'Quick Download failed.' });
       }
