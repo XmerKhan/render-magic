@@ -8,6 +8,7 @@ export interface QuickDownloadOptions {
   settings: EditSettings;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
+  outputWritable?: WritableStream<Uint8Array>;
 }
 
 function even(value: number) {
@@ -19,7 +20,7 @@ export async function quickDownloadVideo({
   settings,
   signal,
   onProgress,
-}: QuickDownloadOptions): Promise<Blob> {
+}: QuickDownloadOptions): Promise<Blob | null> {
   if (!("VideoEncoder" in window) || !("VideoDecoder" in window)) {
     throw new Error(
       "Quick Download needs a modern browser with WebCodecs. Please use the latest Chrome or Edge, or use High Quality Render & Download.",
@@ -47,16 +48,19 @@ export async function quickDownloadVideo({
     videoCodec: "h264",
     audioCodec: "aac",
     // High-quality H.264 1080p with AAC audio; hardware encoding is preferred.
-    videoBitrate: 12_000_000,
+    // 8 Mbps is a strong 1080p bitrate for documentary footage and still-image edits,
+    // while reducing encode workload and output size compared with 12 Mbps.
+    videoBitrate: 8_000_000,
     audioBitrate: 192_000,
     hardwareAcceleration: "prefer-hardware",
     pageResponsiveness: "disabled",
     keyframeIntervalInSeconds: 4,
     signal,
+    outputWritable,
     onProgress: ({ progress }) => onProgress?.(Math.max(0, Math.min(1, progress))),
   });
 
-  return result.getBlob();
+  return outputWritable ? null : result.getBlob();
 }
 
 export async function saveQuickDownload(blob: Blob, fileName: string): Promise<void> {
