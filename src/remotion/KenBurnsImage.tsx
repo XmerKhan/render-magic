@@ -1,12 +1,11 @@
 import { Img, useCurrentFrame, useVideoConfig, staticFile } from 'remotion';
 import type { TimelineScene, KenBurnsConfig } from '@/types';
 
-// Smooth quintic easing avoids abrupt acceleration changes during camera moves.
+// Sine easing gives camera moves a gentler, more even speed profile.
+// The previous quintic curve peaked too sharply in the middle of a shot.
 const easeInOutCubic = (t: number) => {
   const p = Math.max(0, Math.min(1, t));
-  return p < 0.5
-    ? 16 * p * p * p * p * p
-    : 1 - Math.pow(-2 * p + 2, 5) / 2;
+  return -(Math.cos(Math.PI * p) - 1) / 2;
 };
 
 /**
