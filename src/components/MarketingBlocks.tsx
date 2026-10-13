@@ -3,20 +3,98 @@ import { Link } from "@tanstack/react-router";
 import { MarketingLayout, SectionTitle } from "@/components/SiteChrome";
 
 const features = [
-  [Scissors, "Script-driven editing", "Your images or videos should match the corresponding voiceover/script lines, so the scenes stay in the correct position."],
-  [Sparkles, "Automatic motion", "Turn still images into subtle motion so your videos can feel polished instead of frozen."],
-  [Wand2, "Transitions & motion graphics", "Choose Mixed, Smooth, Dynamic or Minimal transitions and add scene-level graphics such as Lower Third, Text Callout, Date Stamp, Location Pin and Quote Card."],
-  [Subtitles, "Auto Captions", "Choose caption settings and styles according to your needs and the style of your video."],
-  [Music2, "Voiceover & audio", "Use background music, auto-duck music under voiceover, trim leading/trailing silence, normalize loudness, boost voice clarity and control fades."],
-  [Image, "Color & export", "Choose None, Cinematic, Warm, Cool, Vintage or Vivid color grades, fine-tune the image and export in 720p, 1080p or 4K."],
+  [Scissors, "Script-driven scene timing", "Use a prepared JSON or SRT timeline to define scene timing. For Auto Sync, match your original script to a word-level timestamp transcript."],
+  [Sparkles, "Ken Burns image motion", "Add pan and zoom movement to still images. Inspect several points in the animation to make sure the subject stays inside the frame."],
+  [Wand2, "Transitions and motion overlays", "Choose a transition pack and use available graphics such as lower thirds, text callouts, date stamps, location pins and quote cards."],
+  [Subtitles, "Caption styling", "Style caption text supplied through your script/timing data. The editor's caption appearance controls do not replace transcript creation or proofreading."],
+  [Music2, "Voiceover and music", "Add a voiceover and optional background track. Available controls include music ducking and audio-level adjustments; always listen to the result."],
+  [Image, "Framing and colour", "Choose a 16:9, 9:16, 1:1 or 4:5 canvas and adjust the visual treatment. A different canvas shape may crop the edges of the source media."],
 ] as const;
 
-export function HomePage() {
-  return <MarketingLayout><section className="relative overflow-hidden border-b border-zinc-800"><div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(245,158,11,.18),transparent_50%)]" /><div className="relative mx-auto max-w-6xl px-4 pb-24 pt-20 text-center sm:px-6 sm:pt-28"><span className="inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">Automatic video editing for creators</span><h1 className="mx-auto mt-6 max-w-4xl text-5xl font-black tracking-tight text-white sm:text-7xl">Edit your videos in just a few minutes.</h1><p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-400 sm:text-xl">Our main purpose is to provide convenience with the help of AI. Upload your media, voiceover and required data, then let Editsfield AI automatically edit and arrange your video.</p><div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row"><Link to="/editor" className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-bold text-zinc-950 hover:bg-amber-400">Open the editor <ArrowRight className="h-5 w-5" /></Link><Link to="/how-it-works" className="inline-flex items-center justify-center rounded-xl border border-zinc-700 px-6 py-3.5 font-semibold text-white hover:bg-zinc-900">See how it works</Link></div><div className="mx-auto mt-14 grid max-w-3xl grid-cols-1 gap-3 text-left sm:grid-cols-3"><Stat title="Save time" text="Complete hours of video editing work in just a few minutes" /><Stat title="4 ratios" text="16:9, 9:16, 1:1, 4:5" /><Stat title="4K export" text="High-quality video result" /></div></div></section><section className="mx-auto max-w-6xl px-4 py-20 sm:px-6"><SectionTitle eyebrow="Built for creators" title="Everything you need for a professional video" description="The tool is designed to be easy enough for people of different ages and experience levels to use." /><div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{features.map(([Icon,title,text])=><FeatureCard key={title} Icon={Icon} title={title} text={text} />)}</div></section><section className="border-y border-zinc-800 bg-zinc-900/40"><div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center"><div><p className="text-sm font-semibold uppercase tracking-[.18em] text-amber-400">Simple workflow</p><h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">Instead of spending valuable time on video editing.</h2><p className="mt-5 text-zinc-400 leading-7">You can use that time for something more productive and meaningful. Follow the simple workflow and let the tool handle the repetitive editing work.</p><div className="mt-7 grid gap-4">{['Upload your media in the correct Scene 1, Scene 2 sequence','Upload your original voiceover and optional background music','Provide your original script and Word Timestamp Transcript','Preview your video, configure settings and export'].map((x,i)=><div key={x} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-zinc-950">{i+1}</span><span className="pt-1 text-sm text-zinc-300">{x}</span></div>)}</div></div><div className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl"><div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5"><div className="mb-4 flex items-center justify-between"><span className="text-sm font-semibold text-white">Your workflow</span><span className="text-xs text-emerald-400">Ready to edit</span></div><div className="space-y-3">{['01 · Upload Media','02 · Upload Voiceover','03 · Original Script','04 · Word Timestamp Transcript','05 · Preview & Export'].map((x,i)=><div key={x} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-3"><div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-zinc-950">{i+1}</span><p className="text-sm text-zinc-300">{x}</p></div></div>)}</div></div></div></div></section><section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6"><h2 className="text-3xl font-bold text-white sm:text-4xl">Ready to make the next video?</h2><p className="mx-auto mt-4 max-w-2xl text-zinc-400">Open the editor, upload your required data and let the tool make your work easier with the help of AI.</p><Link to="/editor" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 font-bold text-zinc-950 hover:bg-amber-400">Start editing <ArrowRight className="h-5 w-5" /></Link></section></MarketingLayout>;
+export function FeaturesPage() {
+  return <MarketingLayout>
+    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <SectionTitle eyebrow="Features" title="A script-led editor for narration-based videos" description="Editsfield AI focuses on the repetitive parts of assembling a narrated video: matching media to timing data, styling scenes, balancing audio and preparing an export." />
+      <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{features.map(([Icon,title,text])=><FeatureCard key={title} Icon={Icon} title={title} text={text}/>)}</div>
+      <div className="mt-12 grid gap-5 lg:grid-cols-2">
+        <FeatureDetail title="Inputs and preparation" intro="For the most predictable result, prepare these files before starting." items={[
+          "Images or video clips, already arranged in story order",
+          "The original narration as an MP3 or WAV file",
+          "Optional background music in a supported audio format",
+          "A supported JSON or SRT timeline for manual timing",
+          "For Auto Sync: the original script plus a word-level timestamp transcript",
+          "An optional scene-order list if the media order differs from the story",
+        ]}/>
+        <FeatureDetail title="Finishing and export" intro="Use the preview to inspect the edit before committing to a long export." items={[
+          "Aspect ratios for landscape, vertical, square and portrait-feed video",
+          "Transition packs and scene-level motion options",
+          "Caption styles, placement and timing adjustments",
+          "Colour presets and manual image adjustments",
+          "Voiceover and background-music controls",
+          "Available export sizes including 720p, 1080p and 4K where supported",
+        ]}/>
+      </div>
+      <section className="mt-12 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8">
+        <h2 className="text-2xl font-bold text-white">What the editor does not do for you</h2>
+        <p className="mt-3 max-w-3xl leading-7 text-zinc-400">Auto Sync is not an automatic speech recognizer: it needs a transcript with word timings. Caption styling does not proofread your words. A preview is not a substitute for checking the downloaded MP4, and changing the aspect ratio may require reframing source media. These checks help prevent errors from carrying into a published video.</p>
+        <Link to="/how-it-works" className="mt-5 inline-flex items-center gap-2 font-semibold text-amber-400 hover:text-amber-300">Follow the step-by-step workflow <ArrowRight className="h-4 w-4"/></Link>
+      </section>
+    </section>
+  </MarketingLayout>;
 }
-function Stat({title,text}:{title:string;text:string}){return <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4"><p className="font-semibold text-white">{title}</p><p className="mt-1 text-xs text-zinc-500">{text}</p></div>}
-function FeatureCard({Icon,title,text}:{Icon:React.ElementType;title:string;text:string}){return <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 transition hover:-translate-y-0.5 hover:border-zinc-700"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400"><Icon className="h-5 w-5"/></span><h3 className="mt-5 font-semibold text-white">{title}</h3><p className="mt-2 text-sm leading-6 text-zinc-500">{text}</p></div>}
-export function FeaturesPage(){return <MarketingLayout><section className="mx-auto max-w-6xl px-4 py-20 sm:px-6"><SectionTitle eyebrow="Features" title="A simple tool to make video editing easier" description="Instead of spending hours or several days completing a video, use Editsfield AI to complete repetitive editing work in just a few minutes."/><div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{features.map(([Icon,title,text])=><FeatureCard key={title} Icon={Icon} title={title} text={text}/>)}</div><div className="mt-12 grid gap-4 md:grid-cols-2"><FeatureDetail title="Video setup" items={['Upload images or videos in the correct Scene 1, Scene 2 sequence','Upload your original voiceover in MP3 / WAV','Add optional background music in MP3 / WAV','Use Original Script in TXT / MD / JSON','Use Word Timestamp Transcript with word-by-word text, start timing and end timing','Scene Order is optional if you forgot to arrange your scenes']}/><FeatureDetail title="Professional finishing" items={['Choose 16:9, 9:16, 1:1 or 4:5','Mixed, Smooth, Dynamic and Minimal transitions','Auto Captions and Motion Graphics','Cinematic, Warm, Cool, Vintage and Vivid color grades','Manual brightness, contrast, saturation, vignette and film grain','720p HD, 1080p Full HD or 4K Ultra HD export']}/></div></section></MarketingLayout>}
-function FeatureDetail({title,items}:{title:string;items:string[]}){return <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6"><h2 className="text-xl font-semibold text-white">{title}</h2><ul className="mt-5 space-y-3">{items.map(x=><li key={x} className="flex gap-3 text-sm text-zinc-400"><Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-400"/>{x}</li>)}</ul></div>}
-export function HowItWorksPage(){return <MarketingLayout><section className="mx-auto max-w-5xl px-4 py-20 sm:px-6"><SectionTitle eyebrow="How it works" title="From your media and voiceover to a finished video" description="If you are not sure how to use it or how to start, follow the steps below. Reading and following these steps will help you understand the complete workflow."/><div className="mt-14 grid gap-5 md:grid-cols-2">{[['01','Upload Your Media','On the left side, use Drop Media Here and upload your assets. Rename and arrange them as Scene 1.jpg, Scene 2.jpg, Scene 3.jpg and continue the same naming sequence.'],['02','Upload Your Voiceover','Go to Audio & Script and upload your original voiceover file in MP3 / WAV format.'],['03','Upload Background Music','If you want to add background music to your video, upload your music file in MP3 / WAV format.'],['04','Original Script','Provide your original script in TXT / MD / JSON. The number of script lines should match the total number of scenes you have.'],['05','Word Timestamp Transcript','Create a word-by-word transcript of your original voiceover with Word-by-word text, Start timing and End timing, then upload it.'],['06','Scene Order — Optional','If you forgot to arrange your scenes in the correct order before uploading them, use Scene Order and provide the correct scene order in TXT or JSON.'],['07','Preview & Timeline','Your video will appear in the front preview screen, and you will also see the timeline below with your voiceover, transitions and scene clips automatically edited and arranged according to your data.'],['08','Configure & Export','Choose your Aspect Ratio, Transitions, Auto Captions, Motion Graphics, Color Grade, Audio Editing, Branding Screen and Export settings according to your requirements.']].map(([n,t,d])=><div key={n} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-7"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-zinc-950">{n}</span><h2 className="mt-4 text-xl font-semibold text-white">{t}</h2><p className="mt-2 text-sm leading-6 text-zinc-500">{d}</p></div>)}</div><div className="mt-10 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6"><p className="text-sm leading-7 text-zinc-300">These are the basic steps for uploading your media and required data. If anything is unclear or you are facing any problem, you can contact us through the Contact Us section and ask for help.</p></div></section></MarketingLayout>}
-export function AboutPage(){return <MarketingLayout><section className="mx-auto max-w-3xl px-4 py-20 sm:px-6"><SectionTitle eyebrow="About" title="A practical video editor, not a black box" description="Our main purpose is to provide convenience with the help of AI and make things easier for people."/><div className="mt-12 space-y-6 text-base leading-8 text-zinc-400"><p>We created this product because, personally, we also know how much time people can waste on video editing. Sometimes it takes hours, many hours, or even several days to complete a video.</p><p>Instead of spending all that valuable time on video editing, you can use that time for something more productive and meaningful.</p><p>Our goal is simply to provide value to people and help them understand how they can make their work easier with the help of AI.</p></div></section></MarketingLayout>}
+
+function FeatureCard({Icon,title,text}:{Icon:React.ElementType;title:string;text:string}) {
+  return <article className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 transition hover:border-zinc-700">
+    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400"><Icon className="h-5 w-5"/></span>
+    <h2 className="mt-5 font-semibold text-white">{title}</h2>
+    <p className="mt-2 text-sm leading-6 text-zinc-400">{text}</p>
+  </article>;
+}
+
+function FeatureDetail({title,intro,items}:{title:string;intro:string;items:string[]}) {
+  return <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:p-7">
+    <h2 className="text-xl font-semibold text-white">{title}</h2><p className="mt-2 text-sm leading-6 text-zinc-400">{intro}</p>
+    <ul className="mt-5 space-y-3">{items.map(item=><li key={item} className="flex gap-3 text-sm leading-6 text-zinc-300"><Check className="mt-1 h-4 w-4 shrink-0 text-amber-400"/><span>{item}</span></li>)}</ul>
+  </section>;
+}
+
+const steps = [
+  { n:"01", title:"Organize the scene media", body:"Rename and arrange images or clips in the order of the story. Check the first, middle and final items; a correct timestamp cannot fix a wrong media order." },
+  { n:"02", title:"Add the voiceover", body:"Upload the recording that the script was written for. If the narration has been re-recorded or edited, make sure the script and transcript reflect that exact version." },
+  { n:"03", title:"Add optional background music", body:"Music is optional. Keep the narration understandable and listen for abrupt starts, stops or volume changes in the final mix." },
+  { n:"04", title:"Choose a timing workflow", body:"For manual timing, load a supported JSON or SRT file. For Auto Sync, provide the original script and a word-level transcript with start and end times." },
+  { n:"05", title:"Check transcript consistency", body:"Script lines and transcript words should follow the same narration in the same order. Auto Sync matches text; it cannot infer missing narration or correct a transcript from another recording." },
+  { n:"06", title:"Confirm scene order", body:"Use the optional Scene Order file only when the media-bin order is not already correct. Verify that every script scene has a corresponding image or clip." },
+  { n:"07", title:"Review the timeline and preview", body:"Watch the opening, one or two middle sections and the ending. Check that scene changes do not interrupt a word, that captions are readable and that motion does not crop the subject." },
+  { n:"08", title:"Choose export settings and inspect the MP4", body:"Select the target aspect ratio and resolution, then export. Browser preview and final encoding are different paths, so watch the downloaded file and check its sound, timing and final seconds." },
+];
+
+export function HowItWorksPage() {
+  return <MarketingLayout>
+    <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20">
+      <SectionTitle eyebrow="How it works" title="A repeatable workflow from source files to export" description="The quality of the output depends on the source media, timing data and review. Use these steps to catch mistakes before a full-length render." />
+      <div className="mt-10 grid gap-4 md:grid-cols-2">{steps.map(step=><article key={step.n} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:p-7"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-zinc-950">{step.n}</span><h2 className="mt-4 text-lg font-semibold text-white">{step.title}</h2><p className="mt-2 text-sm leading-7 text-zinc-400">{step.body}</p></article>)}</div>
+      <section className="mt-10 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 sm:p-8">
+        <h2 className="text-xl font-bold text-white">A small test saves rework</h2>
+        <p className="mt-3 leading-7 text-zinc-300">Before processing a long documentary, make a short test with three to five scenes. Confirm that the scene order is right, the narration is the expected file, captions are legible, the crop is acceptable and the ending reaches the audio end. Then use the same file structure for the full project.</p>
+        <Link to="/blog/" className="mt-5 inline-flex items-center gap-2 font-semibold text-amber-400 hover:text-amber-300">Read troubleshooting guides <ArrowRight className="h-4 w-4"/></Link>
+      </section>
+    </section>
+  </MarketingLayout>;
+}
+
+export function AboutPage() {
+  return <MarketingLayout><section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
+    <SectionTitle eyebrow="About Editsfield AI" title="Built around a specific editing workflow" description="Editsfield AI is a browser-based tool for creators assembling narration-led videos from their own media and timing data."/>
+    <div className="mt-10 space-y-5 text-base leading-8 text-zinc-300">
+      <p>The product focuses on a practical problem: a narrated video often needs many images or clips placed in the right order, timed against a voiceover, styled with captions and transitions, and exported in the right format. Repeating those steps manually can be tedious, especially for projects with many scenes.</p>
+      <p>Editsfield AI brings those steps into one workflow. Users provide the media, voiceover and timing information; the editor helps assemble the timeline and provides controls for motion, captions, audio and export. The creator remains responsible for checking the accuracy and quality of the finished video.</p>
+      <p>We also publish troubleshooting guides about file formats, scene order, transcript matching, timing, framing and rendering. The aim is to explain both what the tool can do and what users need to prepare themselves.</p>
+    </div>
+    <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
+      <h2 className="text-xl font-bold text-white">What matters to us</h2>
+      <ul className="mt-4 space-y-3 text-sm leading-6 text-zinc-300">{["Clear instructions rather than hidden requirements","Honest explanations of supported inputs and limitations","Useful troubleshooting for real editing problems","Respect for the user's source media and creative decisions"].map(x=><li key={x} className="flex gap-3"><Check className="mt-1 h-4 w-4 shrink-0 text-amber-400"/><span>{x}</span></li>)}</ul>
+      <Link to="/editor" className="mt-6 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-3 font-semibold text-zinc-950 hover:bg-amber-400">Explore the editor <ArrowRight className="h-4 w-4"/></Link>
+    </section>
+  </section></MarketingLayout>;
+}
