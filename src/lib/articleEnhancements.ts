@@ -173,5 +173,5 @@ export const articleEnhancements: Record<string, Block[]> = {
       "Preview scenes with movement, not only still images.",
       "Export a short sample and review it at the intended display size."
     ] }
-  }
+  ]
 };
