@@ -1,4 +1,3 @@
-import { renderMediaOnWeb } from "@remotion/web-renderer";
 import type { TimelineData, EditSettings } from "@/types";
 import { VideoComposition } from "@/remotion/VideoComposition";
 import { ASPECT_RATIOS, getCompositionConfig } from "@/remotion/config";
@@ -20,12 +19,17 @@ export async function quickDownloadVideo({
   settings,
   signal,
   onProgress,
+  outputWritable,
 }: QuickDownloadOptions): Promise<Blob | null> {
-  if (!("VideoEncoder" in window) || !("VideoDecoder" in window)) {
+  if (typeof window === "undefined" || !("VideoEncoder" in window) || !("VideoDecoder" in window)) {
     throw new Error(
       "Quick Download needs a modern browser with WebCodecs. Please use the latest Chrome or Edge, or use High Quality Render & Download.",
     );
   }
+
+  // Load the browser-only renderer only when the user starts a browser export.
+  // This prevents browser-only APIs from being evaluated during server rendering.
+  const { renderMediaOnWeb } = await import("@remotion/web-renderer");
 
   const config = getCompositionConfig(timeline, settings);
   // Always export at 1080p long-edge resolution while preserving aspect ratio.
@@ -48,8 +52,7 @@ export async function quickDownloadVideo({
     videoCodec: "h264",
     audioCodec: "aac",
     // High-quality H.264 1080p with AAC audio; hardware encoding is preferred.
-    // 8 Mbps is a strong 1080p bitrate for documentary footage and still-image edits,
-    // while reducing encode workload and output size compared with 12 Mbps.
+    // 8 Mbps is a strong 1080p bitrate for documentary footage and still-image edits.
     videoBitrate: 8_000_000,
     audioBitrate: 192_000,
     hardwareAcceleration: "prefer-hardware",
