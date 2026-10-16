@@ -51,10 +51,10 @@ export async function quickDownloadVideo({
     container: "mp4",
     videoCodec: "h264",
     audioCodec: "aac",
-    // Keep the original 1080p quality target.
-    videoBitrate: 8_000_000,
+    // Keep 1080p output, but use a bitrate that is more broadly supported by browser encoders.
+    videoBitrate: 6_000_000,
     audioBitrate: 192_000,
-    hardwareAcceleration: "prefer-hardware",
+    hardwareAcceleration: "prefer-software",
     pageResponsiveness: "disabled",
     keyframeIntervalInSeconds: 4,
     signal,
