@@ -47,7 +47,7 @@ function sanitizeFilename(name: string): string {
 }
 
 export const createRenderJob = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => createSchema.parse(input))
+  .validator((input: unknown) => createSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -108,7 +108,7 @@ export const createRenderJob = createServerFn({ method: "POST" })
   });
 
 export const registerRenderAssets = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => registerAssetsSchema.parse(input))
+  .validator((input: unknown) => registerAssetsSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -172,7 +172,7 @@ export const registerRenderAssets = createServerFn({ method: "POST" })
   });
 
 export const cleanupRenderOutput = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => jobRefSchema.parse(input))
+  .validator((input: unknown) => jobRefSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -213,7 +213,7 @@ export const cleanupRenderOutput = createServerFn({ method: "POST" })
   });
 
 export const dispatchRenderJob = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => jobRefSchema.parse(input))
+  .validator((input: unknown) => jobRefSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -337,7 +337,7 @@ export const dispatchRenderJob = createServerFn({ method: "POST" })
   });
 
 export const getRenderJob = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => jobRefSchema.parse(input))
+  .validator((input: unknown) => jobRefSchema.parse(input))
   .handler(async ({ data }): Promise<RenderJobState> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
