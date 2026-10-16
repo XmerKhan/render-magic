@@ -14,7 +14,6 @@ import { validateScript, parseScriptFile } from '@/lib/validator';
 import { getAudioDuration, generateWaveform } from '@/lib/mediaUtils';
 import { exportVideo } from '@/lib/videoExporter';
 import { cleanupRenderOutput } from '@/lib/render.functions';
-import { quickDownloadVideo, saveQuickDownload } from '@/lib/quickDownload';
 import { alignScriptToTranscript, parseOriginalScript, parseSceneOrder, parseTimestampedTranscript } from '@/lib/voiceSync';
 import type { WaveformPeak } from '@/lib/mediaUtils';
 
@@ -165,66 +164,47 @@ export default function App() {
     quickAbortRef.current = controller;
     setQuickDownload({ active: true, progress: 0, error: '' });
 
-    let fileWritable: {
-      close: () => Promise<void>;
-      abort?: (reason?: unknown) => Promise<void>;
-    } | null = null;
-
     try {
-      const fileName = `editsfield-quick-${Date.now()}.mp4`;
-      const picker = (window as Window & {
-        showSaveFilePicker?: (options?: unknown) => Promise<{
-          createWritable: () => Promise<{
-            close: () => Promise<void>;
-            abort?: (reason?: unknown) => Promise<void>;
-          }>;
-        }>;
-      }).showSaveFilePicker;
-
-      // Pick the destination before rendering, then stream encoded MP4 chunks
-      // directly to disk. This avoids holding a full 12-minute 1080p MP4 in RAM.
-      if (picker) {
-        try {
-          const handle = await picker({
-            suggestedName: fileName,
-            types: [{ description: "MP4 video", accept: { "video/mp4": [".mp4"] } }],
-          });
-          fileWritable = await handle.createWritable();
-        } catch (error) {
-          if ((error as DOMException)?.name === "AbortError") {
-            setQuickDownload({ active: false, progress: 0, error: '' });
-            return;
-          }
-          // If the file picker is unavailable/blocked, fall back to a Blob download.
-        }
-      }
-
-      const blob = await quickDownloadVideo({
+      // Use the existing chunked server render pipeline for Quick Download.
+      // This keeps the configured 1080p/4K resolution and bitrate quality while
+      // avoiding the slow, single-tab browser render on lower-powered laptops.
+      const result = await exportVideo({
         timeline,
         settings,
+        assets,
+        voiceoverFile,
+        musicFile,
         signal: controller.signal,
-        outputWritable: fileWritable
-          ? (fileWritable as unknown as WritableStream<Uint8Array>)
-          : undefined,
-        onProgress: (value) => setQuickDownload((prev) => ({ ...prev, progress: Math.round(value * 100) })),
+        onProgress: (pct) => {
+          if (pct >= 0) {
+            setQuickDownload((prev) => ({
+              ...prev,
+              progress: Math.max(0, Math.min(100, Math.round(pct))),
+            }));
+          }
+        },
       });
 
-      if (fileWritable) {
-        await fileWritable.close();
-      } else if (blob) {
-        await saveQuickDownload(blob, fileName);
-      } else {
-        throw new Error("The browser did not produce an MP4 file.");
-      }
+      if (controller.signal.aborted) return;
+      const anchor = document.createElement('a');
+      anchor.href = result.downloadUrl;
+      anchor.download = `editsfield-${Date.now()}.mp4`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
+      // Keep the server output around long enough for the download to start.
+      window.setTimeout(() => {
+        void cleanupRenderOutput({ data: { jobId: result.jobId, token: result.token } }).catch(() => {});
+      }, 30 * 60 * 1000);
       setQuickDownload({ active: false, progress: 100, error: '' });
     } catch (error) {
-      try {
-        await fileWritable?.abort?.(error);
-      } catch {
-        // Ignore cleanup errors after a failed or cancelled export.
-      }
       if (!controller.signal.aborted) {
-        setQuickDownload({ active: false, progress: 0, error: (error as Error).message || 'Quick Download failed.' });
+        setQuickDownload({
+          active: false,
+          progress: 0,
+          error: (error as Error).message || 'Quick Download failed.',
+        });
       }
     } finally {
       quickAbortRef.current = null;
@@ -272,7 +252,7 @@ export default function App() {
             <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
             <div>
               <h2 className="text-sm font-semibold text-zinc-100">Quick Download</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">1080p-quality MP4 • hardware encoding when supported</p>
+              <p className="text-xs text-zinc-500 mt-0.5">Full-quality MP4 • parallel server rendering</p>
             </div>
           </div>
           <div className="mt-5 h-2 rounded-full bg-zinc-800 overflow-hidden">
