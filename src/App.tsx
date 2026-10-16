@@ -170,14 +170,13 @@ export default function App() {
       // Ask for the destination before rendering when the browser supports it,
       // so large exports can stream directly to disk instead of filling RAM.
       let outputWritable: WritableStream<Uint8Array> | undefined;
-      let fileHandle: { createWritable: () => Promise<WritableStream<Uint8Array>> } | undefined;
       const picker = (window as Window & {
         showSaveFilePicker?: (options?: unknown) => Promise<{ createWritable: () => Promise<WritableStream<Uint8Array>> }>;
       }).showSaveFilePicker;
 
       if (picker) {
         try {
-          fileHandle = await picker({
+          const fileHandle = await picker({
             suggestedName: `editsfield-${Date.now()}.mp4`,
             types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
           });
