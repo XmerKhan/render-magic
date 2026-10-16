@@ -32,11 +32,9 @@ export async function quickDownloadVideo({
   const { renderMediaOnWeb } = await import("@remotion/web-renderer");
 
   const config = getCompositionConfig(timeline, settings);
-  // Quick Download is the speed-first path. Rendering every frame at 1080p
-  // is expensive on typical laptops, so cap this path at 720p while preserving
-  // the selected aspect ratio. Use High Quality Render & Download for 1080p/4K.
+  // Preserve full 1080p long-edge output quality in Quick Download.
   const aspectRatio = ASPECT_RATIOS[settings.aspectRatio];
-  const scale = 1280 / Math.max(aspectRatio.width, aspectRatio.height);
+  const scale = 1920 / Math.max(aspectRatio.width, aspectRatio.height);
   const width = even(aspectRatio.width * scale);
   const height = even(aspectRatio.height * scale);
 
@@ -53,8 +51,8 @@ export async function quickDownloadVideo({
     container: "mp4",
     videoCodec: "h264",
     audioCodec: "aac",
-    // A moderate 720p bitrate reduces encoder load and file size for quick exports.
-    videoBitrate: 4_500_000,
+    // Keep the original 1080p quality target.
+    videoBitrate: 8_000_000,
     audioBitrate: 192_000,
     hardwareAcceleration: "prefer-hardware",
     pageResponsiveness: "disabled",
