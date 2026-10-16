@@ -170,7 +170,7 @@ export default function App() {
       // avoiding the slow, single-tab browser render on lower-powered laptops.
       const result = await exportVideo({
         timeline,
-        settings,
+        settings: { ...settings, exportResolution: '1080p' },
         assets,
         voiceoverFile,
         musicFile,
