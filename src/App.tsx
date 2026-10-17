@@ -166,35 +166,12 @@ export default function App() {
     setQuickDownload({ active: true, progress: 0, error: '' });
 
     try {
-      // Render locally in the browser, then save the MP4 to the user's device.
-      // Ask for the destination before rendering when the browser supports it,
-      // so large exports can stream directly to disk instead of filling RAM.
-      let outputWritable: WritableStream<Uint8Array> | undefined;
-      const picker = (window as Window & {
-        showSaveFilePicker?: (options?: unknown) => Promise<{ createWritable: () => Promise<WritableStream<Uint8Array>> }>;
-      }).showSaveFilePicker;
-
-      if (picker) {
-        try {
-          const fileHandle = await picker({
-            suggestedName: `editsfield-${Date.now()}.mp4`,
-            types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
-          });
-          outputWritable = await fileHandle.createWritable();
-        } catch (error) {
-          if ((error as DOMException)?.name === 'AbortError') {
-            setQuickDownload({ active: false, progress: 0, error: '' });
-            return;
-          }
-          // If the save picker is unavailable or blocked, use the normal browser download fallback.
-        }
-      }
-
+      // Render in the browser, then trigger the regular Chrome/Edge download.
+      // Do not open a save-file picker or write directly to a selected folder.
       const result = await quickDownloadVideo({
         timeline,
         settings: { ...settings, exportResolution: '1080p' },
         signal: controller.signal,
-        outputWritable,
         onProgress: (fraction) => {
           setQuickDownload((prev) => ({
             ...prev,
@@ -204,14 +181,20 @@ export default function App() {
       });
 
       if (controller.signal.aborted) return;
-      if (outputWritable) {
-        setQuickDownload({ active: false, progress: 100, error: '' });
-      } else if (result) {
-        await saveQuickDownload(result, `editsfield-${Date.now()}.mp4`);
-        setQuickDownload({ active: false, progress: 100, error: '' });
-      } else {
-        throw new Error('The browser renderer did not return an MP4 file.');
-      }
+      if (!result) throw new Error('The browser renderer did not return an MP4 file.');
+
+      const url = URL.createObjectURL(result);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `editsfield-${Date.now()}.mp4`;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
+      // Keep the Blob URL alive while the browser starts the download.
+      window.setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+      setQuickDownload({ active: false, progress: 100, error: '' });
     } catch (error) {
       if (!controller.signal.aborted) {
         setQuickDownload({
@@ -236,7 +219,7 @@ export default function App() {
   return <div className="editsfield-editor min-h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-x-hidden">
     <header className="min-h-14 flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur shrink-0">
       <div className="flex items-center gap-2.5 min-w-0"><div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center"><Film className="w-4 h-4 text-zinc-900" /></div><div className="min-w-0"><h1 className="text-sm font-bold tracking-tight truncate">Editsfield AI</h1><p className="text-[10px] text-zinc-500 -mt-0.5 truncate">Automatic Video Editor</p></div></div>
-      <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleQuickDownload} disabled={!canGenerate || quickDownload.active} title="Render the current edit in your browser and save the MP4" className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/70 text-amber-300 hover:bg-amber-500/10 font-semibold text-xs disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Download className="w-4 h-4" /><span className="hidden sm:inline">Quick Download</span><span className="sm:hidden">Quick</span></button><button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden sm:inline">High Quality Render & Download</span><span className="sm:hidden">HQ Render</span></button></div>
+      <div className="flex items-center gap-2 shrink-0">{validation && <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${validation.valid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{validation.valid ? 'Script OK' : 'Script has issues'}</span>}<button onClick={handleQuickDownload} disabled={!canGenerate || quickDownload.active} title="Render the current edit in your browser and download the MP4" className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/70 text-amber-300 hover:bg-amber-500/10 font-semibold text-xs disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Download className="w-4 h-4" /><span className="hidden sm:inline">Quick Download</span><span className="sm:hidden">Quick</span></button><button onClick={handleGenerate} disabled={!canGenerate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-xs sm:text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><Wand2 className="w-4 h-4" /><span className="hidden sm:inline">High Quality Render & Download</span><span className="sm:hidden">HQ Render</span></button></div>
     </header>
     <div className="h-[calc(100vh-3.5rem)] min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
       <div className="w-full lg:w-72 lg:shrink-0 h-[42vh] lg:h-full"><MediaBin assets={assets} onAssetsChange={setAssets} voiceoverFile={voiceoverFile} onVoiceoverChange={handleVoiceoverChange} musicFile={musicFile} onMusicChange={handleMusicChange} scriptFile={scriptFile} onScriptChange={handleScriptChange} originalScriptFile={originalScriptFile} onOriginalScriptChange={handleOriginalScriptChange} transcriptFile={transcriptFile} onTranscriptChange={handleTranscriptChange} sceneOrderFile={sceneOrderFile} onSceneOrderChange={handleSceneOrderChange} /></div>
@@ -266,7 +249,7 @@ export default function App() {
             <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
             <div>
               <h2 className="text-sm font-semibold text-zinc-100">Quick Download</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">1080p MP4 • rendering in your browser</p>
+              <p className="text-xs text-zinc-500 mt-0.5">1080p MP4 • browser download</p>
             </div>
           </div>
           <div className="mt-5 h-2 rounded-full bg-zinc-800 overflow-hidden">
