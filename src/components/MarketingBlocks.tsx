@@ -77,7 +77,7 @@ export function HowItWorksPage() {
       <section className="mt-10 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 sm:p-8">
         <h2 className="text-xl font-bold text-white">A small test saves rework</h2>
         <p className="mt-3 leading-7 text-zinc-300">Before processing a long documentary, make a short test with three to five scenes. Confirm that the scene order is right, the narration is the expected file, captions are legible, the crop is acceptable and the ending reaches the audio end. Then use the same file structure for the full project.</p>
-        <Link to="/blog/" className="mt-5 inline-flex items-center gap-2 font-semibold text-amber-400 hover:text-amber-300">Read troubleshooting guides <ArrowRight className="h-4 w-4"/></Link>
+        <Link to="/blog" className="mt-5 inline-flex items-center gap-2 font-semibold text-amber-400 hover:text-amber-300">Read troubleshooting guides <ArrowRight className="h-4 w-4"/></Link>
       </section>
     </section>
   </MarketingLayout>;
