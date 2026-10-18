@@ -73,6 +73,7 @@ export const createRenderJob = createServerFn({ method: "POST" })
       timeline: data.timeline as unknown as RenderJobPayload["timeline"],
       settings: data.settings as unknown as RenderJobPayload["settings"],
       assetPaths,
+      assetUrls: {},
       width: data.width,
       height: data.height,
       fps: data.fps,

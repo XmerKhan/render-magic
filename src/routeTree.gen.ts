@@ -23,6 +23,8 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as ApiCronCleanupRenderStorageRouteImport } from './routes/api/cron/cleanup-render-storage'
+import { Route as ApiPublicBlobUploadRouteImport } from './routes/api/public/blob-upload'
 import { Route as ApiPublicRenderWorkerRouteImport } from './routes/api/public/render-worker'
 
 const IndexRoute = IndexRouteImport.update({
@@ -95,6 +97,17 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
+const ApiCronCleanupRenderStorageRoute =
+  ApiCronCleanupRenderStorageRouteImport.update({
+    id: '/api/cron/cleanup-render-storage',
+    path: '/api/cron/cleanup-render-storage',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBlobUploadRoute = ApiPublicBlobUploadRouteImport.update({
+  id: '/api/public/blob-upload',
+  path: '/api/public/blob-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicRenderWorkerRoute = ApiPublicRenderWorkerRouteImport.update({
   id: '/api/public/render-worker',
   path: '/api/public/render-worker',
@@ -116,6 +129,8 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
+  '/api/cron/cleanup-render-storage': typeof ApiCronCleanupRenderStorageRoute
+  '/api/public/blob-upload': typeof ApiPublicBlobUploadRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
 }
 export interface FileRoutesByTo {
@@ -132,6 +147,8 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog': typeof BlogIndexRoute
+  '/api/cron/cleanup-render-storage': typeof ApiCronCleanupRenderStorageRoute
+  '/api/public/blob-upload': typeof ApiPublicBlobUploadRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
 }
 export interface FileRoutesById {
@@ -150,6 +167,8 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
+  '/api/cron/cleanup-render-storage': typeof ApiCronCleanupRenderStorageRoute
+  '/api/public/blob-upload': typeof ApiPublicBlobUploadRoute
   '/api/public/render-worker': typeof ApiPublicRenderWorkerRoute
 }
 export interface FileRouteTypes {
@@ -169,6 +188,8 @@ export interface FileRouteTypes {
     | '/terms'
     | '/blog/$slug'
     | '/blog/'
+    | '/api/cron/cleanup-render-storage'
+    | '/api/public/blob-upload'
     | '/api/public/render-worker'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -185,6 +206,8 @@ export interface FileRouteTypes {
     | '/terms'
     | '/blog/$slug'
     | '/blog'
+    | '/api/cron/cleanup-render-storage'
+    | '/api/public/blob-upload'
     | '/api/public/render-worker'
   id:
     | '__root__'
@@ -202,6 +225,8 @@ export interface FileRouteTypes {
     | '/terms'
     | '/blog/$slug'
     | '/blog/'
+    | '/api/cron/cleanup-render-storage'
+    | '/api/public/blob-upload'
     | '/api/public/render-worker'
   fileRoutesById: FileRoutesById
 }
@@ -218,6 +243,8 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  ApiCronCleanupRenderStorageRoute: typeof ApiCronCleanupRenderStorageRoute
+  ApiPublicBlobUploadRoute: typeof ApiPublicBlobUploadRoute
   ApiPublicRenderWorkerRoute: typeof ApiPublicRenderWorkerRoute
 }
 
@@ -321,6 +348,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/api/cron/cleanup-render-storage': {
+      id: '/api/cron/cleanup-render-storage'
+      path: '/api/cron/cleanup-render-storage'
+      fullPath: '/api/cron/cleanup-render-storage'
+      preLoaderRoute: typeof ApiCronCleanupRenderStorageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/blob-upload': {
+      id: '/api/public/blob-upload'
+      path: '/api/public/blob-upload'
+      fullPath: '/api/public/blob-upload'
+      preLoaderRoute: typeof ApiPublicBlobUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/render-worker': {
       id: '/api/public/render-worker'
       path: '/api/public/render-worker'
@@ -356,6 +397,8 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  ApiCronCleanupRenderStorageRoute: ApiCronCleanupRenderStorageRoute,
+  ApiPublicBlobUploadRoute: ApiPublicBlobUploadRoute,
   ApiPublicRenderWorkerRoute: ApiPublicRenderWorkerRoute,
 }
 export const routeTree = rootRouteImport

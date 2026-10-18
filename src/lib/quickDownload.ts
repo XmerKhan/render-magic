@@ -46,6 +46,7 @@ export async function quickDownloadVideo({
       width,
       height,
       id: "EditsfieldAIQuickDownload",
+      defaultProps: { timeline, settings },
     },
     inputProps: { timeline, settings },
     container: "mp4",
@@ -58,11 +59,15 @@ export async function quickDownloadVideo({
     pageResponsiveness: "disabled",
     keyframeIntervalInSeconds: 4,
     signal,
-    outputWritable,
     onProgress: ({ progress }) => onProgress?.(Math.max(0, Math.min(1, progress))),
   });
 
-  return outputWritable ? null : result.getBlob();
+  const blob = await result.getBlob();
+  if (outputWritable) {
+    await blob.stream().pipeTo(outputWritable, { signal });
+    return null;
+  }
+  return blob;
 }
 
 export async function saveQuickDownload(blob: Blob, fileName: string): Promise<void> {
