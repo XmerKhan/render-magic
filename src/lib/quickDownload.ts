@@ -46,6 +46,7 @@ export async function quickDownloadVideo({
       width,
       height,
       id: "EditsfieldAIQuickDownload",
+      defaultProps: { timeline, settings },
     },
     inputProps: { timeline, settings },
     container: "mp4",

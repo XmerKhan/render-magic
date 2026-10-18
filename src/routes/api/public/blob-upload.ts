@@ -69,7 +69,6 @@ export const Route = createFileRoute("/api/public/blob-upload")({
                 jobId: JSON.parse(tokenPayload || "{}").jobId,
                 key: JSON.parse(tokenPayload || "{}").key,
                 pathname: blob.pathname,
-                size: blob.size,
               });
             },
           });
