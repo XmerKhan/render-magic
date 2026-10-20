@@ -40,6 +40,23 @@ export function HomePageWithPopular() {
       </div>
     </section>
 
+    <section className="mx-auto max-w-4xl px-4 pt-16 sm:px-6">
+      <h2 className="text-2xl font-bold text-white sm:text-3xl">What is Editsfield AI?</h2>
+      <p className="mt-4 leading-7 text-zinc-300">Editsfield AI is a free, browser-based video editor for narration-led videos. You upload images or clips, a voiceover and a JSON or SRT timing file; the editor places each scene on the timeline, adds Ken Burns motion, transitions, captions, music ducking and color grading, and exports an MP4 in 16:9, 9:16, 1:1 or 4:5. No account is required.</p>
+      <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-800">
+        <table className="w-full text-left text-sm text-zinc-300">
+          <caption className="sr-only">How Editsfield AI compares to a manual timeline editor</caption>
+          <thead className="bg-zinc-900 text-white"><tr><th className="p-3">Task</th><th className="p-3">Editsfield AI</th><th className="p-3">Manual timeline editor</th></tr></thead>
+          <tbody>{[
+            ["Placing scenes to narration", "Automatic from JSON/SRT timestamps", "Drag and trim each clip by hand"],
+            ["Motion on still images", "Ken Burns pan and zoom applied per scene", "Keyframes set manually"],
+            ["Music under voiceover", "Auto-ducking built in", "Volume automation by hand"],
+            ["Cost and setup", "Free, runs in the browser, no sign-up", "Often a download or subscription"],
+          ].map(r=><tr key={r[0]} className="border-t border-zinc-800">{r.map((c,i)=><td key={i} className={`p-3 ${i===0?"font-semibold text-white":""}`}>{c}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    </section>
+
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
       <SectionTitle as="h2" eyebrow="What the editor does" title="Tools for the repeated steps in a narration-led edit" description="The editor focuses on assembling scenes, timing them to a prepared script, styling the picture and audio, and exporting a finished file." />
       <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{features.map(([Icon,title,text]) => <FeatureCard key={title} Icon={Icon} title={title} text={text} />)}</div>
