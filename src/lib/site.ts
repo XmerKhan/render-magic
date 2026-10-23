@@ -32,6 +32,19 @@ export const site = {
   logo: `${SITE_URL}/brand-logo.svg`,
   socialImage: `${SITE_URL}/og-image.jpg`,
   contactEmail: (import.meta.env["VITE_CONTACT_EMAIL"] as string | undefined) || FALLBACK_CONTACT_EMAIL,
+  founder: {
+    name: "Umer Khan",
+    handle: "@by_umerkhan",
+    role: "Founder, AI engineer and startup builder",
+    country: "Pakistan",
+  },
+  socials: [
+    { name: "YouTube", url: "https://www.youtube.com/@by_umerkhan" },
+    { name: "LinkedIn", url: "https://www.linkedin.com/in/by_umerkhan" },
+    { name: "Instagram", url: "https://www.instagram.com/by_umerkhan" },
+    { name: "Facebook", url: "https://www.facebook.com/by_umerkhan" },
+    { name: "TikTok", url: "https://www.tiktok.com/@by_umerkhan" },
+  ],
 } as const;
 
 export function absoluteUrl(path: string): string {
