@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { SocialLinks } from "@/components/SocialLinks";
 import { ArrowRight, Mail } from "lucide-react";
 import { site } from "@/lib/site";
 
