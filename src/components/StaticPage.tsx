@@ -1,3 +1,4 @@
+import { SocialLinks } from "@/components/SocialLinks";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2, Film, Mail, ShieldCheck, Sparkles, Users, Wrench } from "lucide-react";
 import { MarketingLayout, SectionTitle } from "@/components/SiteChrome";
@@ -12,7 +13,7 @@ export function LegalSection({ title, children }: { title: string; children: Rea
 }
 
 export function ContactPage() {
-  return <StaticPage eyebrow="Contact" title="Questions, feedback or partnership?" description="We want Editsfield AI to be useful for real creators. Send us a message and include the workflow or issue you are seeing."><div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-center"><Mail className="mx-auto h-9 w-9 text-amber-400"/><p className="mt-4 text-zinc-300">Need help with Editsfield AI, have feedback, or want to discuss a partnership? We would like to hear from you.</p>{site.contactEmail ? <a className="mt-5 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-3 font-semibold text-zinc-950 hover:bg-amber-400" href={`mailto:${site.contactEmail}`}>Email Editsfield AI <ArrowRight className="h-4 w-4"/></a> : <p className="mt-4 text-sm text-zinc-500">No public contact address has been configured yet.</p>}</div><LegalSection title="For editor support"><p>If you are reporting an editor issue, include your browser, approximate video duration, export resolution, and the relevant validation or render error. That makes troubleshooting much faster.</p></LegalSection><LegalSection title="What you can contact us about"><p>Product questions, bug reports, feature suggestions, workflow feedback, accessibility concerns, privacy questions and general enquiries.</p></LegalSection></StaticPage>;
+  return <StaticPage eyebrow="Contact" title="Questions, feedback or partnership?" description="We want Editsfield AI to be useful for real creators. Send us a message and include the workflow or issue you are seeing."><div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-center"><Mail className="mx-auto h-9 w-9 text-amber-400"/><p className="mt-4 text-zinc-300">Need help with Editsfield AI, have feedback, or want to discuss a partnership? We would like to hear from you.</p><p className="mt-4 text-sm text-zinc-400">Contact us here:</p><a className="mt-2 inline-block text-xl font-bold text-amber-400 hover:text-amber-300" href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a><div><a className="mt-5 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-3 font-semibold text-zinc-950 hover:bg-amber-400" href={`mailto:${site.contactEmail}`}>Email Editsfield AI <ArrowRight className="h-4 w-4"/></a></div><p className="mt-4 text-xs text-zinc-500">We usually reply within 2–3 working days.</p></div><LegalSection title="Who runs Editsfield AI"><p>Editsfield AI is built and maintained by {site.founder.name}, an AI engineer and startup founder based in {site.founder.country}. You can also reach the founder on social media at {site.founder.handle}.</p><SocialLinks className="mt-3" /></LegalSection><LegalSection title="For editor support"><p>If you are reporting an editor issue, include your browser, approximate video duration, export resolution, and the relevant validation or render error. That makes troubleshooting much faster.</p></LegalSection><LegalSection title="What you can contact us about"><p>Product questions, bug reports, feature suggestions, workflow feedback, accessibility concerns, privacy questions and general enquiries.</p></LegalSection></StaticPage>;
 }
 
 export function AboutPage() {
@@ -30,8 +31,14 @@ export function AboutPage() {
       <p>We aim to explain the required inputs, supported workflow and known limitations clearly. Our guides cover practical tasks such as transcript formatting, scene order, caption timing, aspect-ratio framing and render troubleshooting.</p>
       <p>Product features and infrastructure can change. If a guide no longer matches the current editor, please contact us with the page URL and the step that differs so we can review it.</p>
     </LegalSection>
+    <LegalSection title="Who built Editsfield AI">
+      <p>Editsfield AI was founded and built by <strong className="text-white">{site.founder.name}</strong>, an AI engineer from {site.founder.country} who designs and launches software startups. He built the editor after repeatedly assembling narration-led videos by hand — lining images up with a voiceover, adding motion and captions, and re-exporting every time a scene was a second off.</p>
+      <p>Umer writes and reviews the guides on this site himself, based on testing the editor with real scripts, transcripts and exports. When a guide describes a limitation, it is one he has run into while building and using the product.</p>
+      <p>Follow his work as {site.founder.handle}:</p>
+      <SocialLinks className="mt-2" />
+    </LegalSection>
     <LegalSection title="Contact">
-      <p>Questions, accessibility feedback, bug reports and suggestions are welcome through our <Link to="/contact" className="text-amber-400 hover:text-amber-300">Contact page</Link>.</p>
+      <p>Questions, accessibility feedback, bug reports and suggestions are welcome through our <Link to="/contact" className="text-amber-400 hover:text-amber-300">Contact page</Link> or by email at <a href={`mailto:${site.contactEmail}`} className="text-amber-400 hover:text-amber-300">{site.contactEmail}</a>.</p>
     </LegalSection>
     <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-7 text-center">
       <Film className="mx-auto h-8 w-8 text-amber-400"/>
