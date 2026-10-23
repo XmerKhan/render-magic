@@ -24,7 +24,7 @@ export interface BlogPost {
   related: string[];
 }
 
-const AUTHOR = "Editsfield AI Team";
+const AUTHOR = "Umer Khan";
 export const blogAuthor = AUTHOR;
 
 export const posts: BlogPost[] = [
