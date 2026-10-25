@@ -40,7 +40,7 @@ export const site = {
   },
   socials: [
     { name: "YouTube", url: "https://www.youtube.com/@by_umerkhan" },
-    { name: "LinkedIn", url: "https://www.linkedin.com/in/by_umerkhan" },
+    { name: "LinkedIn", url: "https://www.linkedin.com/in/byumerkhan" },
     { name: "Instagram", url: "https://www.instagram.com/by_umerkhan" },
     { name: "Facebook", url: "https://www.facebook.com/by_umerkhan" },
     { name: "TikTok", url: "https://www.tiktok.com/@by_umerkhan" },
