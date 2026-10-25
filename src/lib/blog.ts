@@ -2,13 +2,23 @@
  * Blog content source. Content is authored as structured blocks so every
  * article renders as semantic HTML in the server-rendered output.
  */
+import editorFull from "@/assets/blog/editor-full.png.asset.json";
+import editorMediaBin from "@/assets/blog/editor-media-bin.png.asset.json";
+import editorSettings from "@/assets/blog/editor-settings.png.asset.json";
+import editorTimeline from "@/assets/blog/editor-timeline.png.asset.json";
+
 export type Block =
   | { t: "p"; text: string }
   | { t: "h2"; text: string }
   | { t: "h3"; text: string }
   | { t: "ul"; items: string[] }
   | { t: "ol"; items: string[] }
-  | { t: "note"; text: string };
+  | { t: "note"; text: string }
+  | { t: "img"; src: string; alt: string; caption?: string }
+  | { t: "experience"; text: string };
+
+/** Real screenshots of the editor, served from CDN assets and used inside guides. */
+export const blogImages = { editorFull, editorMediaBin, editorSettings, editorTimeline };
 
 export interface BlogPost {
   slug: string;
@@ -36,7 +46,7 @@ export const posts: BlogPost[] = [
       "A step-by-step walkthrough of editing a video online in Editsfield AI: add media, supply a timing script, set transitions and captions, preview, then export an MP4.",
     cluster: "Beginner video editing",
     datePublished: "2026-06-02",
-    dateModified: "2026-08-20",
+    dateModified: "2026-10-24",
     readingMinutes: 6,
     summary:
       "Editing online means your media stays in the browser tab and the export happens on a render server. Here is the exact Editsfield AI workflow.",
@@ -89,6 +99,16 @@ export const posts: BlogPost[] = [
         t: "p",
         text: "Render time scales with duration, resolution and how many heavy effects are active. Short videos finish quickly; long voiceovers are split into chunks that render in parallel and are stitched together with FFmpeg.",
       },
+      {
+        t: "img",
+        src: editorFull.url,
+        alt: "The Editsfield AI editor with three scenes loaded, a golden-hour harbour photo in the preview and the auto-generated timeline underneath",
+        caption: "The editor mid-project: media bin on the left, live preview in the centre, export settings on the right.",
+      },
+      {
+        t: "experience",
+        text: "My own routine: I record the voiceover on my phone first, then write the script while listening back, and only then open the editor. The very first video I made here had a script written in milliseconds instead of seconds, so every scene was supposed to last ten minutes — the validation banner caught it instantly. Now I never press Generate Video before reading that banner.",
+      },
     ],
     related: ["how-to-cut-a-video", "how-to-add-captions-to-a-video", "what-is-an-aspect-ratio"],
   },
@@ -100,7 +120,7 @@ export const posts: BlogPost[] = [
       "Learn how cutting works in Editsfield AI: segment boundaries define every cut, and pacing comes from segment length rather than manual dragging.",
     cluster: "Beginner video editing",
     datePublished: "2026-06-09",
-    dateModified: "2026-08-12",
+    dateModified: "2026-10-24",
     readingMinutes: 5,
     summary:
       "In Editsfield AI a cut is a segment boundary. Shorter segments mean faster pacing; longer segments let a shot breathe.",
@@ -133,6 +153,10 @@ export const posts: BlogPost[] = [
         t: "p",
         text: "The timeline strip under the preview shows every scene alongside the voiceover waveform. If a cut lands mid-word, nudge the segment time in the script and reload it.",
       },
+      {
+        t: "experience",
+        text: "My first script-driven cut had two-second scenes everywhere because I assumed faster always means better. It looked like a slideshow having a panic attack. Now narration scenes sit at five to seven seconds, and I only shorten the opening scenes where I want extra energy.",
+      },
     ],
     related: ["how-to-edit-a-video-online", "what-is-a-jump-cut", "how-to-add-transitions-to-a-video"],
   },
@@ -144,7 +168,7 @@ export const posts: BlogPost[] = [
       "Add captions to a video in Editsfield AI using an SRT or JSON script, then pick a caption style, position, font, size and timing offset.",
     cluster: "Captions",
     datePublished: "2026-06-16",
-    dateModified: "2026-08-18",
+    dateModified: "2026-10-24",
     readingMinutes: 5,
     summary:
       "Editsfield AI renders captions from your script text. It does not transcribe audio for you, so bring an SRT or JSON file.",
@@ -177,6 +201,10 @@ export const posts: BlogPost[] = [
         t: "p",
         text: "If captions run slightly ahead of or behind the voice, use the timing offset in milliseconds instead of re-editing every timestamp in the script.",
       },
+      {
+        t: "experience",
+        text: "Karaoke captions are my default now. I tested fade and karaoke on the same Reel, and the karaoke version clearly held attention longer — people read along instead of half-listening. One habit from my own mistakes: check the timing offset on a scene with a long word first, because that is where sync problems show up.",
+      },
     ],
     related: [
       "how-to-add-captions-to-instagram-reels",
@@ -192,7 +220,7 @@ export const posts: BlogPost[] = [
       "Add background music in Editsfield AI, set the music volume, enable auto-ducking, and use loudness normalisation so narration stays clear.",
     cluster: "Audio",
     datePublished: "2026-06-23",
-    dateModified: "2026-08-10",
+    dateModified: "2026-10-24",
     readingMinutes: 4,
     summary:
       "Music sits under the voiceover. Auto-ducking lowers it while the voice is speaking, so you do not have to draw volume curves.",
@@ -221,6 +249,10 @@ export const posts: BlogPost[] = [
         t: "p",
         text: "Editsfield AI does not include a music library. Use tracks you have the rights to publish, especially for monetised uploads.",
       },
+      {
+        t: "experience",
+        text: "I learned this the hard way: my first export sounded perfect on headphones and muddy on laptop speakers, because the music drowned every consonant. Now I set the music around 25–30 percent and always play the final MP4 on my phone speaker before uploading. If I can hear every word there, the video ships.",
+      },
     ],
     related: ["how-to-edit-a-video-online", "how-to-cut-a-video", "how-to-edit-youtube-videos"],
   },
@@ -232,7 +264,7 @@ export const posts: BlogPost[] = [
       "Choose a transition pack in Editsfield AI, set the transition duration, and override individual scene transitions on the timeline.",
     cluster: "Transitions",
     datePublished: "2026-06-30",
-    dateModified: "2026-08-14",
+    dateModified: "2026-10-24",
     readingMinutes: 4,
     summary:
       "Transition packs apply a consistent style across the whole edit, and you can override any single scene from the timeline strip.",
@@ -260,6 +292,16 @@ export const posts: BlogPost[] = [
       {
         t: "p",
         text: "Use a hard cut when the narration continues across the boundary. Save visible transitions for genuine topic changes.",
+      },
+      {
+        t: "img",
+        src: editorTimeline.url,
+        alt: "The Editsfield AI auto-generated timeline strip showing three scenes with their time ranges",
+        caption: "Every boundary between two scenes on this strip is a transition point you can override.",
+      },
+      {
+        t: "experience",
+        text: "I preview every transition at full speed, never frame by frame — scrubbing slowly makes everything look smooth. My favourite surprise: the minimal pack made my documentary-style edit feel twice as professional as the flashy one did. Less sparkle, more story.",
       },
     ],
     related: ["what-is-a-video-transition", "how-to-cut-a-video", "how-to-edit-videos-for-tiktok"],
@@ -508,7 +550,7 @@ export const posts: BlogPost[] = [
       "A jump cut removes time from a continuous shot. Learn what it does, why creators use it, and when it becomes distracting.",
     cluster: "Educational",
     datePublished: "2026-08-08",
-    dateModified: "2026-08-12",
+    dateModified: "2026-10-24",
     readingMinutes: 3,
     summary: "A jump cut removes a chunk of time inside one continuous shot, tightening pacing.",
     blocks: [
@@ -530,6 +572,10 @@ export const posts: BlogPost[] = [
       {
         t: "p",
         text: "Set the affected boundary to a hard cut and enable trim silence so removed pauses do not leave dead audio.",
+      },
+      {
+        t: "experience",
+        text: "I jump-cut almost every video I record for my own channels, and the rule I learned the hard way is simple: turn trim silence on. Without it, the removed pause leaves a strange audio hole that no visual cut can hide.",
       },
     ],
     related: ["how-to-cut-a-video", "what-is-video-editing", "what-is-a-video-transition"],
@@ -625,7 +671,7 @@ export const posts: BlogPost[] = [
     description: "Every field the Editsfield AI JSON script accepts — sceneId, mediaId, startTime, endTime, text, callout, location, date, quote and lowerThird — with a working example.",
     cluster: "Editor reference",
     datePublished: "2026-10-23",
-    dateModified: "2026-10-23",
+    dateModified: "2026-10-24",
     readingMinutes: 7,
     summary: "The script file decides which picture appears when. This reference lists every field the editor reads, what happens when one is missing, and the mistakes that most often break a timeline.",
     blocks: [
@@ -657,6 +703,10 @@ export const posts: BlogPost[] = [
         "Trailing commas. JSON does not allow them, and the file will fail to parse.",
       ] },
       { t: "note", text: "Prefer SRT? The editor also reads SRT files and takes the media reference from a [media: filename] tag inside each subtitle block." },
+      {
+        t: "experience",
+        text: "This reference exists because I once debugged my own timeline at 2am: the script said Harbour.JPG and the file was named harbour.jpg, so the scene silently went missing. The validation panel had flagged it the whole time. Read the panel. Always.",
+      },
     ],
     related: ["how-to-edit-a-video-online", "how-to-add-captions-to-a-video", "what-is-a-video-transition"],
   },
@@ -667,7 +717,7 @@ export const posts: BlogPost[] = [
     description: "Turn an ordinary SRT subtitle file into an edit script: add a [media: filename] tag to each block and Editsfield AI places the matching image or clip for that time range.",
     cluster: "Editor reference",
     datePublished: "2026-10-23",
-    dateModified: "2026-10-23",
+    dateModified: "2026-10-24",
     readingMinutes: 5,
     summary: "If you already have subtitles for your voiceover, you are most of the way to a finished timeline. One tag per subtitle block is all the editor needs.",
     blocks: [
