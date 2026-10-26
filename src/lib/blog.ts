@@ -740,8 +740,124 @@ export const posts: BlogPost[] = [
         "Load the voiceover, media and SRT in the editor and read the validation panel.",
         "Preview the first, middle and last scene before exporting.",
       ] },
+      {
+        t: "experience",
+        text: "This is now my favourite way to build a timeline. My transcription tool gives me the SRT, I add one [media: …] tag per block, and the timeline assembles itself. My personal record from voiceover to finished export is about six minutes for a 90-second video.",
+      },
     ],
     related: ["editsfield-json-script-format", "how-to-add-captions-to-a-video", "how-to-edit-youtube-videos"],
+  },
+  {
+    slug: "how-to-add-ken-burns-motion-to-photos",
+    title: "How to Add Ken Burns Motion to Photos in a Video",
+    metaTitle: "Add Ken Burns Motion to Photos Online | Editsfield AI",
+    description:
+      "Ken Burns motion turns still photos into moving footage. Learn how Editsfield AI applies it automatically and how to choose photos that pan and zoom beautifully.",
+    cluster: "Photo video",
+    datePublished: "2026-10-24",
+    dateModified: "2026-10-24",
+    readingMinutes: 4,
+    summary:
+      "Editsfield AI adds gentle pan-and-zoom motion to every photo automatically. Here is how it works and how to pick photos that look good in motion.",
+    blocks: [
+      { t: "p", text: "Ken Burns motion is a slow, gentle pan and zoom applied to a still photo so it feels like moving footage. In Editsfield AI every image you upload gets this motion automatically — no keyframes, no manual animation." },
+      { t: "h2", text: "Why still photos need motion" },
+      { t: "p", text: "A photo that sits frozen on screen reads as a mistake after a few seconds. Slow motion keeps the eye engaged and makes a photo-only video feel like a real film rather than a slideshow." },
+      { t: "h2", text: "Choosing photos that move well" },
+      { t: "ul", items: [
+        "Higher resolution pans more cleanly — very small images look soft when zoomed.",
+        "Keep the subject near the centre so the motion never pushes it out of frame.",
+        "Group photos from one scene together so the motion style stays consistent.",
+      ] },
+      {
+        t: "img",
+        src: editorTimeline.url,
+        alt: "The Editsfield AI auto-generated timeline showing three photo scenes, each with its own time range",
+        caption: "Each photo becomes a scene on the timeline, with motion applied automatically.",
+      },
+      { t: "h2", text: "Combining photos and clips" },
+      { t: "p", text: "Mix photos with video clips freely. The editor applies Ken Burns motion only to still images, so your video clips keep their natural movement." },
+      {
+        t: "experience",
+        text: "Photos used to be my least favourite thing to edit, because stills felt dead on screen. Since the motion is automatic here, photo videos are now what I make most — my Karachi documentary was built entirely from stills, and nobody believed they were photos until I told them.",
+      },
+    ],
+    related: ["how-to-make-a-video-with-photos-and-voiceover", "how-to-edit-a-video-online", "what-is-an-aspect-ratio"],
+  },
+  {
+    slug: "how-to-color-grade-a-video-online",
+    title: "How to Color Grade a Video Online (Presets + Manual Controls)",
+    metaTitle: "How to Color Grade a Video Online | Editsfield AI",
+    description:
+      "Give your video a consistent look with Editsfield AI colour grades — cinematic, warm, cool, vintage and vivid — or fine-tune brightness, contrast, saturation, vignette and grain yourself.",
+    cluster: "Color grading",
+    datePublished: "2026-10-24",
+    dateModified: "2026-10-24",
+    readingMinutes: 4,
+    summary:
+      "Pick a colour grade preset for an instant consistent look, or use the manual sliders for brightness, contrast, saturation, vignette and film grain.",
+    blocks: [
+      { t: "p", text: "Color grading is the process of giving every shot in your video the same tonal mood. In Editsfield AI you pick a preset — cinematic, warm, cool, vintage or vivid — and it applies across the whole edit, or you open the manual controls and set brightness, contrast, saturation, vignette and film grain yourself." },
+      { t: "h2", text: "Start with a preset, not the sliders" },
+      { t: "p", text: "Presets are tuned combinations, so they give you a consistent starting point in one click. Cinematic suits narration and documentary footage, warm suits food and lifestyle, cool suits tech and product, vintage suits history and memory, and vivid suits travel and nature." },
+      { t: "h2", text: "Manual fine-tuning" },
+      { t: "ul", items: [
+        "Brightness and contrast: fix exposure first; a grade cannot rescue a badly lit shot.",
+        "Saturation: lower it slightly for a filmic feel; pushing it up rarely helps.",
+        "Vignette: a light vignette pulls the eye to the centre of the frame.",
+        "Grain: a small amount hides compression flatness; too much looks like noise.",
+      ] },
+      {
+        t: "img",
+        src: editorSettings.url,
+        alt: "The Editsfield AI export settings panel showing aspect ratio, transition packs, caption styles and the colour grade presets",
+        caption: "The grade presets live in the Export Settings panel, next to captions and motion graphics.",
+      },
+      { t: "h2", text: "Keep the look consistent across a series" },
+      { t: "p", text: "A single grade across every episode of a series makes a feed look intentional. Note your preset and slider values and reuse them, so episode five matches episode one." },
+      {
+        t: "experience",
+        text: "Cinematic grade with a touch of grain is my go-to for everything I post. The one experiment that failed spectacularly: I maxed the saturation for a food video and the mangoes looked radioactive. Now I pick a preset first and only nudge the manual sliders afterwards.",
+      },
+    ],
+    related: ["how-to-edit-instagram-reels", "how-to-edit-youtube-videos", "how-to-edit-a-video-online"],
+  },
+  {
+    slug: "how-to-make-a-video-with-photos-and-voiceover",
+    title: "How to Make a Video with Photos and a Voiceover (Step by Step)",
+    metaTitle: "Make a Video from Photos and a Voiceover | Editsfield AI",
+    description:
+      "Turn a folder of photos and a recorded voiceover into a finished video: name your files, write a simple script, upload, validate and export an MP4.",
+    cluster: "Photo video",
+    datePublished: "2026-10-24",
+    dateModified: "2026-10-24",
+    readingMinutes: 5,
+    summary:
+      "Record the voiceover, name your photos, write a simple SRT or JSON script, upload everything, check the validation banner and export the MP4.",
+    blocks: [
+      { t: "p", text: "A video made from photos and a voiceover needs three things: your images, the narration audio, and a script that says which photo appears when. Editsfield AI reads all three and builds the timeline for you." },
+      { t: "h2", text: "Step 1 — Record and keep the voiceover" },
+      { t: "p", text: "Record your narration as one continuous file, even a rough phone recording. The voiceover defines the total length of the video, so finish it before touching the timeline." },
+      { t: "h2", text: "Step 2 — Name your photos simply" },
+      { t: "p", text: "Rename files to short names with no spaces, such as harbour.jpg or market.jpg. The script references these exact names, and a mismatch is the most common reason a scene goes missing." },
+      { t: "h2", text: "Step 3 — Write the script" },
+      { t: "p", text: "An SRT file with one [media: filename] tag per subtitle block is the easiest format. A JSON list of scenes with mediaId, startTime and endTime works too. Times are seconds measured against the voiceover." },
+      { t: "h2", text: "Step 4 — Upload and validate" },
+      { t: "p", text: "Drop the photos, the voiceover and the script into the editor. The validation panel checks for gaps, overlaps and missing media. A green banner means the timeline matches the voiceover exactly." },
+      {
+        t: "img",
+        src: editorMediaBin.url,
+        alt: "The Editsfield AI media bin showing three uploaded photos, a loaded voiceover and a loaded SRT script",
+        caption: "The media bin with three photos, the voiceover and the SRT script all loaded and ready.",
+      },
+      { t: "h2", text: "Step 5 — Style and export" },
+      { t: "p", text: "Pick the aspect ratio, captions and colour grade, preview the first and last scene, then press Generate Video. The finished MP4 downloads when the render completes." },
+      {
+        t: "experience",
+        text: "This is exactly how I make our monthly family-recap videos: my mother sends me thirty photos, I pick twelve, rename them, and write the script while listening to the voiceover. The whole video takes me under half an hour now — the first one took an entire evening.",
+      },
+    ],
+    related: ["how-to-add-ken-burns-motion-to-photos", "use-srt-file-as-video-edit-script", "how-to-edit-a-video-online"],
   }
 ];
 

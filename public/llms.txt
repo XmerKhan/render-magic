@@ -35,6 +35,11 @@
 - [What Is a Jump Cut?](https://www.editsfieldai.online/blog/what-is-a-jump-cut)
 - [What Is a Video Transition?](https://www.editsfieldai.online/blog/what-is-a-video-transition)
 - [What Is an Aspect Ratio?](https://www.editsfieldai.online/blog/what-is-an-aspect-ratio)
+- [The Editsfield AI JSON Script Format, Explained Field by Field](https://www.editsfieldai.online/blog/editsfield-json-script-format)
+- [How to Use an SRT Subtitle File as a Video Edit Script](https://www.editsfieldai.online/blog/use-srt-file-as-video-edit-script)
+- [How to Add Ken Burns Motion to Photos in a Video](https://www.editsfieldai.online/blog/how-to-add-ken-burns-motion-to-photos)
+- [How to Color Grade a Video Online (Presets + Manual Controls)](https://www.editsfieldai.online/blog/how-to-color-grade-a-video-online)
+- [How to Make a Video with Photos and a Voiceover (Step by Step)](https://www.editsfieldai.online/blog/how-to-make-a-video-with-photos-and-voiceover)
 
 ## Troubleshooting guides
 - [How to Use Auto Sync: Match Your Script to a Word-Timestamp Transcript](https://www.editsfieldai.online/blog/how-to-use-auto-sync)
